@@ -1,33 +1,50 @@
-thickness = 1.92;
-tolerance = 0.1;
-spacing = [8, 8];
-fillet = 3;
+// Lid thickness
+thickness = 1.92; 
 
+// Tolerance
+tolerance = 0.1; 
+
+// Spacing between nozzles
+spacing = [8, 8]; 
+
+// Box fillet radius
+fillet = 3; 
+
+// E3D nozzle height
 e3d_height = 7.5;
+
+// Volcano nozzle height
 volcano_height = 16.5;
 
+// Nozzle diameter
 nozzle_dia = 6;
+
+// Lid height (distance from box plane to lid)
 nozzle_roof = 10;
 
-e3d_labels = [
-    ["0.1", "0.2", "0.25", "0.3", "0.5"],
-    ["0.4", "0.4", "0.4",  "0.4", "0.4"],
-    ["0.4", "0.4", "0.4",  "0.4", "0.4"],
-    ["0.5", "0.6", "0.8",  "0.8", "1.0"]
-];
+// Count of nozzle grid columns
+nozzle_cols = 5;
 
-volcano_labels = [
-    ["0.4", "0.6", "0.8", "1.0", "1.2"],
-    ["0.4", "0.6", "0.8", "1.0", "1.2"],
-    ["0.4", "0.6", "0.8", "1.0", "1.2"],
-    ["0.4", "0.6", "0.8", "1.0", "1.2"]
-];
+// Array of E3D labels
+e3d_names = ["0.1", "0.2", ".25", "0.3", "0.5", "0.4", "0.4", "0.4", "0.4", "0.4", "0.4", "0.4", "0.4", "0.4", "0.4", "0.5", "0.6", "0.8",  "0.8", "1.0"];
 
-mode = "lock";
+// Array of Volcano labels
+volcano_names = ["0.4", "0.6", "0.8", "1.0", "1.2", "0.4", "0.6", "0.8", "1.0", "1.2", "0.4", "0.6", "0.8", "1.0", "1.2", "0.4", "0.6", "0.8", "1.0", "1.2"];
+
+// Part
+mode = "all"; // [all:All,box:Box,lid_volcano:Volcano Lid,lid_e3d:E3D Lid,lock:Lock handle,label:Labels]
 
 module label(t, va = "bottom") {
-    text(t, size = 4, halign = "center", valign = va, $fn = 64);    
+    text(t, size = 5, halign = "center", font = "Cantarell:style=Bold", valign = va, $fn = 64);    
 }
+
+// E3D Labels
+nozzle_rows = max(len(e3d_names) / nozzle_cols, len(volcano_names) / nozzle_cols);
+
+e3d_labels = [ for (i = [0:nozzle_rows-1]) [ for (j = [0:nozzle_cols-1]) e3d_names[i * nozzle_cols + j] ] ];
+
+// Volcano Labels
+volcano_labels = [ for (i = [0:nozzle_rows-1]) [ for (j = [0:nozzle_cols-1]) volcano_names[i * nozzle_cols + j] ] ];
 
 e3d_grid = [len(e3d_labels[0]), len(e3d_labels)];
 volcano_grid = [len(volcano_labels[0]), len(volcano_labels)];
@@ -444,6 +461,9 @@ if (mode == "box") {
 
 } else if (mode == "all") {
     
+    
+    color("Lavender")
+    render()
     translate([-abs($t*2-1) * lock_length,0,0]) {
         lock_handle_aligned();
 
@@ -453,21 +473,23 @@ if (mode == "box") {
         lock_handle_aligned();
     }
     
-    color("lightblue", 0.3)
+    color("LightSlateGray")
     box();
     
+    color("Gainsboro")
     translate([0,0,cube_dim[2]])
     label_grid(e3d_labels);
     
+    color("Gainsboro")
     translate([0,cube_dim[1],0])
     rotate([180,0,0])
     label_grid(volcano_labels);
     
-    color("white",0.5)
+    color("SpringGreen",0.7)
     translate([0,0,cube_dim[2] + thickness + nozzle_roof])
         lid_e3d();
    
-    color("white",0.5)
+    color("LightSteelBlue",0.7)
     translate([0,0,-thickness - nozzle_roof])
         lid_volcano();
     
