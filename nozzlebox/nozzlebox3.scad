@@ -32,7 +32,7 @@ e3d_names = ["0.1", "0.2", ".25", "0.3", "0.5", "0.4", "0.4", "0.4", "0.4", "0.4
 volcano_names = ["0.4", "0.6", "0.8", "1.0", "1.2", "0.4", "0.6", "0.8", "1.0", "1.2", "0.4", "0.6", "0.8", "1.0", "1.2", "0.4", "0.6", "0.8", "1.0", "1.2"];
 
 // Part
-mode = "j"; // [all:All,box:Box,lid_volcano:Volcano Lid,lid_e3d:E3D Lid,lock:Lock handle,label:Labels]
+mode = "all"; // [all:All,box:Box,lid_volcano:Volcano Lid,lid_e3d:E3D Lid,lock:Lock handle,label:Labels]
 
 module label(t, va = "bottom") {
     text(t, size = 5, halign = "center", font = "Cantarell:style=Bold", valign = va, $fn = 64);    
@@ -450,11 +450,11 @@ if (mode == "box") {
     rotate([180,0,0])
     label_grid(volcano_labels);
     
-    color("SpringGreen",0.7)
+    color("SpringGreen",0.3)
     translate([0,0,cube_dim[2] + thickness + nozzle_roof])
         lid_e3d();
    
-    color("LightSteelBlue",0.7)
+    color("LightSteelBlue",0.3)
     translate([0,0,-thickness - nozzle_roof])
         lid_volcano();
     
