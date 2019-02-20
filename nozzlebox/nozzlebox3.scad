@@ -2,7 +2,7 @@
 thickness = 1.92; 
 
 // Tolerance
-tolerance = 0.1; 
+tolerance = 0.2; 
 
 // Spacing between nozzles
 spacing = [8, 8]; 
@@ -32,7 +32,7 @@ e3d_names = ["0.1", "0.2", ".25", "0.3", "0.5", "0.4", "0.4", "0.4", "0.4", "0.4
 volcano_names = ["0.4", "0.6", "0.8", "1.0", "1.2", "0.4", "0.6", "0.8", "1.0", "1.2", "0.4", "0.6", "0.8", "1.0", "1.2", "0.4", "0.6", "0.8", "1.0", "1.2"];
 
 // Part
-mode = "all"; // [all:All,box:Box,lid_volcano:Volcano Lid,lid_e3d:E3D Lid,lock:Lock handle,label:Labels]
+mode = "j"; // [all:All,box:Box,lid_volcano:Volcano Lid,lid_e3d:E3D Lid,lock:Lock handle,label:Labels]
 
 module label(t, va = "bottom") {
     text(t, size = 5, halign = "center", font = "Cantarell:style=Bold", valign = va, $fn = 64);    
@@ -78,19 +78,19 @@ module box_shape(off = 0) {
 
 module box_belt() {
     hull($fn = 64) {
+
         translate([0,0,thickness + tolerance])
-        linear_extrude(thickness * 4 - tolerance * 2)
-            offset(thickness + tolerance)
-                box_shape();
-        linear_extrude(thickness * 6)
-            box_shape();        
+        linear_extrude(thickness * 4)
+            box_shape(thickness);
+        linear_extrude(thickness * 6 + tolerance * 2)
+            box_shape(-tolerance);
     }
 }
 
 module box() {
     
     module lock_guide() {
-        translate([0,-fillet-thickness-tolerance*3,cube_dim[2]/2])
+        translate([0,-fillet-thickness-tolerance,cube_dim[2]/2])
         rotate([90,0,90]) {
             
             linear_extrude(lock_length*2+tolerance*2)
@@ -108,14 +108,14 @@ module box() {
         union() {
         
             linear_extrude(cube_dim[2] / 2 - thickness * 3 + tolerance, $fn = 64)
-                box_shape();
+                box_shape(-tolerance);
         
-            translate([0, 0, cube_dim[2] / 2 - thickness * 3])
+            translate([0, 0, cube_dim[2] / 2 - thickness * 3 - tolerance])
             box_belt();
             
             translate([0,0,cube_dim[2] / 2 + thickness * 3 - tolerance])
             linear_extrude(cube_dim[2] / 2 - thickness * 3 + tolerance, $fn = 64)
-                box_shape();
+                box_shape(-tolerance);
             
             lock_guide();
             
@@ -135,50 +135,49 @@ module box() {
     
 }
 
-module lock_tri(tol = 0) {
+module lock_tri() {
     //translate([/*cube_dim[0] - lock_length*2 - thickness*2*/0,-fillet-tolerance-thickness,0])
     render()
     rotate([90,0,90]) {
         
         //translate([0,0,thickness])
         
-        translate([0,0,-tol])
-        linear_extrude(lock_length + tol*2)
-            offset(tol)
+        translate([0,0,-tolerance])
+        linear_extrude(lock_length + tolerance*2)
             lock_tri_shape();
         
         translate([0,0,thickness*2])
-        sphere(r = thickness + tol, $fn = 64);
+        sphere(r = thickness, $fn = 64);
         
     }
 }
 
 
 module lid_base() {
-    h = nozzle_roof + cube_dim[2]/2 - thickness*2 - tolerance;
+    h = nozzle_roof + cube_dim[2]/2 - thickness*2;
     
     module lid_wall() {
         render()
         difference() {
             linear_extrude(h, $fn = 64)
             difference() {
-                box_shape(thickness + tolerance);
-                box_shape(tolerance);
+                box_shape(thickness);
+                box_shape();
             }
             
-            translate([0,0,-thickness*5 + tolerance])
+            translate([0,0,-thickness*5])
             box_belt();
         }
     }
     
     module lock_tri_aligned() {
-        translate([0,-fillet-tolerance-thickness,-thickness*2])
+        translate([0,-fillet-thickness,-thickness*2])
             lock_tri();
     }
         
     translate([0,0,-thickness]) {
         linear_extrude(thickness, $fn = 64)
-            box_shape(thickness + tolerance);
+            box_shape(thickness);
         
         translate([0,0,-h])
             lid_wall();
@@ -220,16 +219,16 @@ module lock_guide_shape() {
     t = thickness;
     tol = tolerance;
     polygon([
-        [tol*2, t*2 - tol],
+        [tol, t*2],
         //[0,t*2 - tol],
-        [-t-tol*2, t*2 - tol],
-        [-t-tol*2, h],
-        [-t*2-tol*2,h],
-        [-t*2-tol*2,-h],
-        [-t-tol*2, -h],
-        [-t-tol*2, -t*2 + tol],
+        [-t-tol, t*2],
+        [-t-tol, h],
+        [-t*2-tol,h],
+        [-t*2-tol,-h],
+        [-t-tol, -h],
+        [-t-tol, -t*2],
         //[0, -t/2-tol],
-        [tol*2, -t*2 + tol]
+        [tol, -t*2]
     ]);
 }
 
@@ -238,16 +237,16 @@ module lock_guide_shape_close() {
     t = thickness;
     tol = tolerance;
     polygon([
-        [tol*2, t*2 - tol],
+        [tol, t*2],
         //[0,t*2 - tol],
         //[-t-tol*2, t*2 - tol],
-        [-t-tol*2, h],
-        [-t*2-tol*2,h],
-        [-t*2-tol*2,-h],
-        [-t-tol*2, -h],
+        [-t-tol, h],
+        [-t*2-tol,h],
+        [-t*2-tol,-h],
+        [-t-tol, -h],
         //[-t-tol*2, -t*2 + tol],
         //[0, -t/2-tol],
-        [tol*2, -t*2 + tol]
+        [tol, -t*2]
     ]);
 }
 
@@ -276,10 +275,9 @@ module lock_tri_close_shape() {
 
 
 module fillet(r) {
-    
     offset(r)
-    offset(-r)
-    children();
+        offset(-r)
+            children();
 }
 
 
@@ -287,24 +285,13 @@ module lock_handle_shape() {
     t = thickness;
     difference() {
         fillet(1, $fn = 64)
-        translate([-t*3-tolerance, -cube_dim[2]/2-thickness-nozzle_roof]) {
-            square([t*3+tolerance, cube_dim[2] + nozzle_roof * 2 + thickness*2]);
+        translate([-t*3-tolerance*2, -cube_dim[2]/2-thickness-nozzle_roof]) {
+            square([t*3+tolerance*2, cube_dim[2] + nozzle_roof * 2 + thickness*2]);
         }
         
         offset(tolerance, $fn = 32)
             lock_guide_shape();
     }
-    /*
-        
-        translate([-t,-t*4.5,0])
-        offset(tolerance, $fn = 32)
-        lock_tri_shape();
-        
-        translate([-t,t*4.5,0])
-        offset(tolerance, $fn = 32)
-        lock_tri_shape();*/
-    
-    
 }
 
 module lock_icon() {
@@ -350,48 +337,6 @@ module lock_icon() {
 
 }
 
-
-module lock_handle() {
-    
-    difference() {
-    
-    linear_extrude(lock_length)    
-        lock_handle_shape();
-    
-    lock_offset = cube_dim[2]/2 + nozzle_roof - thickness*2;
-    
-    translate([0,lock_offset,0])
-    rotate([90,-90,180])
-    lock_tri(tolerance);
-    
-    translate([0,-lock_offset,0])
-    rotate([90,-90,180])
-    lock_tri(tolerance);
-        
-    }
-    
-    /*
-    color("green")
-    render() {
-    difference() {
-        linear_extrude(lock_length)    
-            lock_handle_shape();
-    
-        translate([-thickness,thickness*4.5,thickness*2])
-            sphere(r = thickness, $fn = 64);
-        translate([-thickness,-thickness*4.5,thickness*2])
-            sphere(r = thickness, $fn = 64);
-    }
-    
-        translate([-thickness*3.5,-4,lock_length / 2 - 13])
-        rotate([0,-90,0])
-        linear_extrude(thickness)
-        lock_icon();
-    
-    }*/
-    
-}
-
 module nozzle_label(txt) {
     
     cell_dim = [nozzle_dia + spacing[0], nozzle_dia + spacing[1]];
@@ -428,9 +373,30 @@ module lock_guide() {
     }
 }
 
+
+module lock_handle() {
+    difference() {
+    
+        linear_extrude(lock_length)    
+            lock_handle_shape();
+        
+        lock_offset = cube_dim[2]/2 + nozzle_roof - thickness*2;
+        
+        translate([0,lock_offset,0])
+            rotate([90,-90,180])
+                lock_tri();
+        
+        translate([0,-lock_offset,0])
+            rotate([90,-90,180])
+                lock_tri();
+            
+    }
+}
+
+
 module lock_handle_aligned() {
     
-    translate([cube_dim[0] - thickness*2 - tolerance,-fillet - thickness -tolerance*3,cube_dim[2]/2])
+    translate([cube_dim[0] - thickness*2 - tolerance,-fillet - thickness - tolerance,cube_dim[2]/2])
     rotate([90,0,90])
     lock_handle();
 }
@@ -441,7 +407,6 @@ module label_grid(grid) {
         translate([j * cell_dim[0], ((len(grid)-1) - i) * cell_dim[1] - (spacing[1] - nozzle_dia + tolerance)/2, 0])
             nozzle_label(grid[i][j]);
 }
-
 
 if (mode == "box") {
     box();
