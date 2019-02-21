@@ -2,7 +2,7 @@
 thickness = 1.92; 
 
 // Tolerance
-tolerance = 0.2; 
+tolerance = 0.5; 
 
 // Spacing between nozzles
 spacing = [8, 8]; 
@@ -81,16 +81,16 @@ module box_belt() {
 
         translate([0,0,thickness + tolerance])
         linear_extrude(thickness * 4)
-            box_shape(thickness);
+            box_shape(thickness + tolerance);
         linear_extrude(thickness * 6 + tolerance * 2)
-            box_shape(-tolerance);
+            box_shape();
     }
 }
 
 module box() {
     
     module lock_guide() {
-        translate([0,-fillet-thickness-tolerance,cube_dim[2]/2])
+        translate([0,-fillet-thickness-tolerance*2,cube_dim[2]/2])
         rotate([90,0,90]) {
             
             linear_extrude(lock_length*2+tolerance*2)
@@ -108,14 +108,14 @@ module box() {
         union() {
         
             linear_extrude(cube_dim[2] / 2 - thickness * 3 + tolerance, $fn = 64)
-                box_shape(-tolerance);
+                box_shape();
         
             translate([0, 0, cube_dim[2] / 2 - thickness * 3 - tolerance])
             box_belt();
             
             translate([0,0,cube_dim[2] / 2 + thickness * 3 - tolerance])
             linear_extrude(cube_dim[2] / 2 - thickness * 3 + tolerance, $fn = 64)
-                box_shape(-tolerance);
+                box_shape();
             
             lock_guide();
             
@@ -161,8 +161,8 @@ module lid_base() {
         difference() {
             linear_extrude(h, $fn = 64)
             difference() {
-                box_shape(thickness);
-                box_shape();
+                box_shape(thickness + tolerance);
+                box_shape(tolerance);
             }
             
             translate([0,0,-thickness*5])
@@ -171,13 +171,13 @@ module lid_base() {
     }
     
     module lock_tri_aligned() {
-        translate([0,-fillet-thickness,-thickness*2])
+        translate([0,-fillet-thickness-tolerance,-thickness*2])
             lock_tri();
     }
         
     translate([0,0,-thickness]) {
         linear_extrude(thickness, $fn = 64)
-            box_shape(thickness);
+            box_shape(thickness + tolerance);
         
         translate([0,0,-h])
             lid_wall();
@@ -396,7 +396,7 @@ module lock_handle() {
 
 module lock_handle_aligned() {
     
-    translate([cube_dim[0] - thickness*2 - tolerance,-fillet - thickness - tolerance,cube_dim[2]/2])
+    translate([cube_dim[0] - thickness*2 - tolerance,-fillet - thickness - tolerance * 2,cube_dim[2]/2])
     rotate([90,0,90])
     lock_handle();
 }
@@ -427,6 +427,7 @@ if (mode == "box") {
 } else if (mode == "all") {
     
     
+    
     color("Lavender")
     render()
     translate([-abs($t*2-1) * lock_length,0,0]) {
@@ -441,6 +442,7 @@ if (mode == "box") {
     color("LightSlateGray")
     box();
     
+    /*
     color("Gainsboro")
     translate([0,0,cube_dim[2]])
     label_grid(e3d_labels);
@@ -448,7 +450,7 @@ if (mode == "box") {
     color("Gainsboro")
     translate([0,cube_dim[1],0])
     rotate([180,0,0])
-    label_grid(volcano_labels);
+    label_grid(volcano_labels);*/
     
     color("SpringGreen",0.3)
     translate([0,0,cube_dim[2] + thickness + nozzle_roof])
