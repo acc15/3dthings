@@ -4,6 +4,9 @@ thickness = 1.92;
 // Tolerance
 tolerance = 0.2; 
 
+// Lid tolerance
+lid_tolerance = 0.4;
+
 // Spacing between nozzles
 spacing = [8, 8]; 
 
@@ -79,18 +82,18 @@ module box_shape(off = 0) {
 module box_belt() {
     hull($fn = 64) {
 
-        translate([0,0,thickness + tolerance])
+        translate([0,0,thickness + lid_tolerance])
         linear_extrude(thickness * 4)
-            box_shape(thickness);
-        linear_extrude(thickness * 6 + tolerance * 2)
-            box_shape(-tolerance);
+            box_shape(thickness + lid_tolerance);
+        linear_extrude(thickness * 6 + lid_tolerance*2)
+            box_shape();
     }
 }
 
 module box() {
     
     module lock_guide() {
-        translate([0,-fillet-thickness-tolerance,cube_dim[2]/2])
+        translate([0,-fillet-thickness-tolerance-lid_tolerance,cube_dim[2]/2])
         rotate([90,0,90]) {
             
             linear_extrude(lock_length*2+tolerance*2)
@@ -108,14 +111,14 @@ module box() {
         union() {
         
             linear_extrude(cube_dim[2] / 2 - thickness * 3 + tolerance, $fn = 64)
-                box_shape(-tolerance);
+                box_shape();
         
-            translate([0, 0, cube_dim[2] / 2 - thickness * 3 - tolerance])
+            translate([0, 0, cube_dim[2] / 2 - thickness * 3 - lid_tolerance])
             box_belt();
             
             translate([0,0,cube_dim[2] / 2 + thickness * 3 - tolerance])
             linear_extrude(cube_dim[2] / 2 - thickness * 3 + tolerance, $fn = 64)
-                box_shape(-tolerance);
+                box_shape();
             
             lock_guide();
             
@@ -136,12 +139,10 @@ module box() {
 }
 
 module lock_tri() {
-    //translate([/*cube_dim[0] - lock_length*2 - thickness*2*/0,-fillet-tolerance-thickness,0])
     render()
     rotate([90,0,90]) {
         
-        //translate([0,0,thickness])
-        
+
         translate([0,0,-tolerance])
         linear_extrude(lock_length + tolerance*2)
             lock_tri_shape();
@@ -161,23 +162,23 @@ module lid_base() {
         difference() {
             linear_extrude(h, $fn = 64)
             difference() {
-                box_shape(thickness);
-                box_shape();
+                box_shape(thickness + lid_tolerance);
+                box_shape(lid_tolerance);
             }
             
-            translate([0,0,-thickness*5])
+            translate([0,0,-thickness*5 - lid_tolerance + tolerance*2])
             box_belt();
         }
     }
     
     module lock_tri_aligned() {
-        translate([0,-fillet-thickness,-thickness*2])
+        translate([0,-fillet-thickness-lid_tolerance,-thickness*2])
             lock_tri();
     }
         
     translate([0,0,-thickness]) {
         linear_extrude(thickness, $fn = 64)
-            box_shape(thickness);
+            box_shape(thickness + lid_tolerance);
         
         translate([0,0,-h])
             lid_wall();
@@ -294,49 +295,6 @@ module lock_handle_shape() {
     }
 }
 
-module lock_icon() {
-       
-    module arrow() {
-        l = 4;
-        t = 2;
-        polygon([[0,0], [l,0], [l,-1], [l*2,t/2], [l,t+1], [l,t], [0,t]]);
-    }
-    
-
-    module lock(closed = true) {
-        translate([closed ? 0 : -3, 0])
-        difference() {
-        
-            translate([1,4]) {
-                translate([2,3], $fn = 32)
-                    circle(r = 2);
-                square([4, 3]);
-            }
-        
-            translate([2,3]) {
-                translate([1,4])
-                circle(r = 1, $fn = 32);
-                square([2, 4]);
-            }
-        }
-        
-        square([6,4]);
-    }
-    
-    lock(true);
-    
-    translate([8,6])
-    arrow();
-    
-    translate([16,2])
-    rotate(180)
-    arrow();
-    
-    translate([20,0,0])
-    lock(false);
-
-}
-
 module nozzle_label(txt) {
     
     cell_dim = [nozzle_dia + spacing[0], nozzle_dia + spacing[1]];
@@ -396,7 +354,7 @@ module lock_handle() {
 
 module lock_handle_aligned() {
     
-    translate([cube_dim[0] - thickness*2 - tolerance,-fillet - thickness - tolerance,cube_dim[2]/2])
+    translate([cube_dim[0] - thickness*2 - tolerance,-fillet - thickness - lid_tolerance - tolerance,cube_dim[2]/2])
     rotate([90,0,90])
     lock_handle();
 }
@@ -450,11 +408,11 @@ if (mode == "box") {
     rotate([180,0,0])
     label_grid(volcano_labels);
     
-    color("SpringGreen",0.3)
+    color("SpringGreen",0.5)
     translate([0,0,cube_dim[2] + thickness + nozzle_roof])
         lid_e3d();
    
-    color("LightSteelBlue",0.3)
+    color("LightSteelBlue",0.5)
     translate([0,0,-thickness - nozzle_roof])
         lid_volcano();
     
