@@ -1,4 +1,4 @@
-include <e3d_v6_all_metall_hotend.scad>;
+  //include <e3d_v6_all_metall_hotend.scad>;
 
 xplate_dim = [100,120,3.2];
 xplate_holes = [32.5, 42];
@@ -506,9 +506,13 @@ module sq_duct() {
     }
 }
 
-sq_duct();
-translate([18,12,-5])
-a_e3d();
+xplate();
+
+//base_mount();
+
+//sq_duct();
+//translate([18,12,-5])
+//a_e3d();
 
 //fan_mount();
 
