@@ -1,6 +1,4 @@
-include <tinylib.scad>
-
-dim = [22,15,15];
+dim = [15,22,15];
 t = 1.2;
 hole_s = 9;
 hole_b = 8;
@@ -46,7 +44,6 @@ module profile3d() {
 }
 
 module profile_base() {
-    
     linear_extrude(dim[2])
         offset(delta = tol + wall + inset)
             polygon(profile_rect(0));
@@ -92,29 +89,9 @@ module mount_direct() {
             translate([dim[0]+td,dim[1]+td,0])
             bolt($fn = 32);
         
-        translate([sep / 2 - (5 + tol * 2) / 2,dim[1]/2,10])
-            nut_diff();
-            
         translate([-5, dim[1]/2,10])
         rotate([0,90,0])
             cylinder(d = 5, h = 18, $fn = 32);
-    }
-}
-
-module nut() {
-    translate([0,0,-tol])
-    linear_extrude(5 + tol * 2)
-        ngon(6, 4.5 + tol);
-}
-
-module nut_diff() {
-    rotate([0,90,0]) {
-        hull() {
-            translate([-20,0,0]) nut();
-            nut();
-        }
-        translate([0,0,-10])
-        cylinder(d = 5, h = wall + tol + sep + diff_tol * 2, $fn = 32);
     }
 }
 
@@ -167,8 +144,6 @@ module mount_angle(a) {
                         linear_extrude(brick_dim[2] + diff_tol + w_add)
                             offset(tol)
                                 polygon(profile());
-                    translate([wall + tol + sep / 2 - 2.5 - tol, brick_dim[1] / 2, dim[2] - (4.5+tol * 3)])
-                        nut_diff();
                 }            
             }
             translate([-diff_tol, -diff_tol, -100 - diff_tol])
@@ -176,107 +151,99 @@ module mount_angle(a) {
             
         }
         
-    }
-                
+    }   
+}
 
+
+spacing = 20;
+
+module wall_mount() {
+    translate([dim[0] - wall, dim[1],0])
+        cube([wall, 125 - dim[1], spacing]);
+    
+    translate([dim[0] - 66,125 - wall,0])
+    difference() {
+        cube([66, wall, spacing]);
+      
+        translate([12,wall,spacing/2])
+            rotate([90,0,0])
+                bolt();
+        translate([36,wall,spacing/2])
+            rotate([90,0,0])
+                bolt();
+    }
+    
+    translate([0,dim[1],spacing / 2 - wall / 2])
+    cube([dim[0],125 - dim[1],wall]);
     
 }
 
-//rotate([90,-90,180])
+module profile_mount(l, internal) {
+    mount_length = 20;
+    union() {
+        translate([0,0,spacing - diff_tol])
+            curved_profile_mount(mount_length + diff_tol);  
+        linear_extrude(spacing)
+            polygon(profile(internal));
+        
+        if (l) 
+            wall_mount();
+        else
+            translate([0,dim[1],spacing])
+            rotate([180,0,0])
+                wall_mount();
+    }
+}
 
-//mount_angle(30);
-//polygon(profile_internal);
 
 module curved_profile(internal = true) {
     
     r = 70;
     a = 60;
-    spacing = 20;
     
-    mount_length = 20;
+    
+    
 
-    module profile_mount(l) {
-        union() {
-            translate([0,0,spacing - diff_tol])
-                curved_profile_mount(mount_length + diff_tol);  
-            linear_extrude(spacing)
-                polygon(profile(internal));
-            
-            if (l) 
-                wall_mount();
-            else
-                translate([0,dim[1],spacing])
-                rotate([180,0,0])
-                    wall_mount();
-        }
-    }
+    rotate_extrude(angle = a, $fn = 256)
+        translate([r + dim[1],0,0])
+            translate([0, dim[0]])
+                rotate(-90)
+                    polygon(profile(internal));
+    
+    
+        //translate([r,0,0])
+            rotate([0,0,0]) 
+                profile_mount(true, internal);
 
-    module wall_mount() {
-        translate([dim[0] - wall, dim[1],0])
-            cube([wall, 125 - dim[1], spacing]);
-        
-        translate([dim[0] - 66,125 - wall,0])
-        difference() {
-            cube([66, wall, spacing]);
-          
-            translate([12,wall,spacing/2])
-                rotate([90,0,0])
-                    bolt();
-            translate([36,wall,spacing/2])
-                rotate([90,0,0])
-                    bolt();
-        }
-        
-        translate([0,dim[1],spacing / 2 - wall / 2])
-        cube([dim[0],125 - dim[1],wall]);
-        
-    }
-    
-    
-    //wall_mount();
-    
-    //profile_mount();
-
-    
-    union() {
-        translate([r,0,0])
-            rotate([0,-90,-90]) 
-                profile_mount(true);
-
+/*
         rotate([0,0,-a])
             translate([r + dim[1],0,0])
                 rotate([0,-90,90]) 
-                    profile_mount(false);
+                    profile_mount(false, internal);
+      */
 
-        rotate_extrude(angle = -a, $fn = 256)
-            translate([r + dim[1],0,0])
-                rotate([0,0,90])
-                    polygon(profile(internal));
-    }
     
 }
 
 module curved_profile_mount(l) {
-    
     dia = 5.2;
-       
-    difference() {
-        linear_extrude(l)
-            polygon(profile_internal);
-            
-        translate([sep-diff_tol,dim[1]/2,l - dim[1]/2])
-            rotate([0,90,0])
-                cylinder(d = dia, h = sep, $fn = 64);
-        
-        translate([sep+t,dim[1]/2,l - dim[1]/2])
-            nut_diff();
-    }
-       
+    linear_extrude(l)
+        polygon(profile_internal);
 }
 
+r = 70;
+a = 60;
 
+//translate([r + dim[1],0,0])
+//translate([0, dim[0]])
+//rotate(-90)
+polygon(profile(true));
 
 //curved_profile_mount(20);
 
-curved_profile(false);
+//curved_profile(false);
+
+// wall_mount();
+//profile_mount(false);
+
 
