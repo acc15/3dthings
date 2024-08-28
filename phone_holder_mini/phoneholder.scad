@@ -1,10 +1,10 @@
 
 t=0.6*4;
 a=10;
-af=60;
+af=70;
 h=20;
 s=10;
-w=15;
+w=12;
 
 
 module simple_squares() {
