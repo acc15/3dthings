@@ -42,15 +42,15 @@ module spool() {
 }
 
 module holder_pillar() {
-    linear_extrude(holder_length + z_thickness*2)
+    linear_extrude(holder_length + z_thickness*4)
     pillar_shape();
 }
 
 module solder_pillar() {
     difference() {
         holder_pillar();
-        translate([-pillar_d/2, -solder_d/2, z_thickness*2])
-            cube([pillar_d, solder_d, holder_length - z_thickness * 2]);
+        translate([-pillar_d/2, -solder_d/2, z_thickness*3])
+            cube([pillar_d, solder_d, holder_length-z_thickness*2]);
     }
 }
 
@@ -60,17 +60,17 @@ module pillar_placement() {
     rotate(-45)
     translate([holder_leg_length,0,0])
     rotate(90)
-    children(0);
+    children(1);
     
     rotate(-135)
     translate([holder_leg_length,0,0])
     rotate(90)
-    children(0);
+    children(1);
     
     rotate(135)
     translate([holder_solder_length,0,0])
     rotate(-135)
-    children(1);
+    children(2);
     
 }
 
@@ -84,8 +84,7 @@ module holder_hull(angle, length = holder_leg_length) {
     }
 }
 
-module holder_base() {
-    linear_extrude(z_thickness)
+module holder_base_shape() {
     difference() {
         union() {
             holder_hull(-135);
@@ -96,30 +95,56 @@ module holder_base() {
         pillar_placement() {
             pillar_shape();
             pillar_shape();
+            pillar_shape();
         }
     }
-   
+}
+
+module holder_base(side) {
+    mirror([side ? 1 : 0, 0, 0])
+    union() {
+    
+        linear_extrude(z_thickness)
+        holder_base_shape();
+
+        translate([0,0,z_thickness])
+        linear_extrude(z_thickness)
+        difference() {
+            holder_base_shape();
+
+            offset(-xy_thickness)
+            holder_base_shape();
+        }
+    }
 }
 
 module holder_pillars() {
     pillar_placement() {
         holder_pillar();
+        holder_pillar();
         solder_pillar();
     }
 }
 
+module assembly() {
 
-rotate([0,90,0])
-solder_pillar();
+    translate([0,0,z_thickness*2])
+    rotate([0,180,0])
+    holder_base(true);
+    translate([0,0,z_thickness*2 + holder_length])
+    holder_base(false);
+    holder_pillars();
+    
+    #translate([0,(pillar_d-spool_hole)/2,z_thickness*2 + (holder_length-spool_length)/2])
+    spool();
 
-//holder_base();
+}
 
-//holder_pillars();
-
-*translate([0,0, z_thickness*2 + holder_length])
-mirror([0,0,-1])
-holder_base();
+rotate([90,0,0])
+assembly();
 
 
-*translate([0,(pillar_d-spool_hole)/2,z_thickness + (holder_length-spool_length)/2])
-#spool();
+
+
+
+
