@@ -2,65 +2,42 @@ $fa = 0.2;
 $fs = 0.2;
 
 tolerance = 0.2;
+xy_thickness = 0.48 * 3;
+z_thickness = 0.2 * 4;
 
-bearing_inner_dia = 6.4 - tolerance;
+
+bearing_inner_dia = 6.3;
 bearing_ext_dia = 12.7 + tolerance * 2;
 bearing_thickness = 6 + tolerance * 2;
 bolt_d = 4;//2 + tolerance * 2;
+nut_d = 8;
 
-pin_space = 8;
+
+pin_space = xy_thickness * 2 + bolt_d;
+
 handle_base_length = 25;
 handle_length = 25;
 handle_dia = 12;
 
 rack_height = 60;
 rack_length = 50;
+rack_thickness = z_thickness + max(nut_d, bearing_thickness);
 
-
-xy_thickness = 0.48 * 3;
-z_thickness = 0.2 * 4;
-
-module pin_shape(dia = bearing_inner_dia, cut = true) {
+module pin_shape(dia = bearing_inner_dia) {
     cut_mult = 0.7;
-    
     intersection() {
         circle(d = dia);
-        
         translate([-dia*cut_mult/2,-dia/2])
-        square([dia*(cut ? cut_mult : 1), dia]);
-        
+        square([dia*cut_mult, dia]);
     }
 }
 
-
-module pin_hole() {
-    difference() {
-        linear_extrude(pin_space)
-        pin_shape();
-        translate([-bearing_inner_dia / 2 - tolerance, 0, pin_space/2])
-        rotate([0,90,0])
-        cylinder(d = bolt_d, h = bearing_inner_dia + tolerance*2);
-    }
-}
-
-module pin() {
-
-    pin_hole();
-    translate([0,0,pin_space])
-    linear_extrude(bearing_thickness)
-    pin_shape(cut = false);
-    
-    translate([0,0,pin_space + bearing_thickness])
-    pin_hole();
-    
-
-}
 
 module handle_base() {
 
     inner_d = bearing_inner_dia + 0.6;
     ext_d = inner_d + xy_thickness * 2;
-    height = pin_space - 2;
+    height = pin_space;
 
     module handle_shape() {
         hull() { 
@@ -71,9 +48,6 @@ module handle_base() {
             circle(d = bolt_d + xy_thickness * 2);
         }
     }
-
-
-    
 
     difference() {
 
@@ -138,25 +112,18 @@ module handle() {
 
 module rack() {
     
-    module rack_shape() {
+    module rack_contour() {
         hull() {
             circle(d = bearing_ext_dia + xy_thickness * 2);
             translate([rack_height,-rack_length/2])
             square([xy_thickness, rack_length]);
         }        
     }
-
-    thickness = bearing_thickness + z_thickness;
-
     
-    difference() {
-        
-        linear_extrude(thickness)
+    module rack_shape() {
         union() {
             difference() {
-                
                 ext_dia = bearing_ext_dia + xy_thickness * 2;
-                
                 union() {
                     circle(d = ext_dia);
                     translate([0,-xy_thickness/2])
@@ -170,13 +137,19 @@ module rack() {
                 circle(d = bearing_ext_dia);
             }
             difference() {
-                rack_shape();
+                rack_contour();
                 offset(-xy_thickness)
-                rack_shape();
+                rack_contour();
             }
         }
+    }
+    
+
+    difference() {
+        linear_extrude(rack_thickness)
+        rack_shape();
         
-        translate([rack_height-tolerance,0,thickness/2]) {
+        translate([rack_height-tolerance,0,z_thickness + (rack_thickness-z_thickness)/2]) {
             
             translate([0,-rack_length/4,0])
             rotate([0,90,0])
@@ -185,37 +158,108 @@ module rack() {
             translate([0,rack_length/4,0])
             rotate([0,90,0])
             cylinder(d = bolt_d, h = xy_thickness + tolerance*2);
-                
+               
         }
+    }
+    
+    linear_extrude(z_thickness)
+    intersection() {
+        offset(xy_thickness)
+        rack_shape();
+        rack_contour();
+    }
+}
+
+
+module pin() {
+    difference() {
+        linear_extrude(bearing_thickness + pin_space*2)
+        pin_shape();
+        
+        translate([-bearing_inner_dia/2,0,pin_space*0.5])
+        rotate([0,90,0])
+        cylinder(d = bolt_d, h = bearing_inner_dia);
+        
+        translate([-bearing_inner_dia/2,0,bearing_thickness + pin_space*1.5])
+        rotate([0,90,0])
+        cylinder(d = bolt_d, h = bearing_inner_dia);
+    }
+}
+
+module pin_flat_adapter() {
+    
+    difference() {
+
+        linear_extrude(pin_space)
+        difference() {
+            offset(tolerance + xy_thickness)
+            pin_shape();
+            
+            offset(tolerance)
+            pin_shape();
+            
+        }
+        
+        translate([-bearing_inner_dia/2-xy_thickness-tolerance*2,0,pin_space*0.5])
+        rotate([0,90,0])
+        cylinder(d = bolt_d, h = bearing_inner_dia + xy_thickness*2 + tolerance*4);
         
     }
     
     
+    translate([0,0,pin_space])
+    
     difference() {
-        cylinder(d = bearing_ext_dia + xy_thickness * 2, h = z_thickness);
-        translate([0,0,-tolerance])
-        cylinder(d = bearing_ext_dia - xy_thickness * 2, h = z_thickness+tolerance*2);
+        linear_extrude(pin_space)
+        offset(tolerance + xy_thickness)
+        pin_shape();
+        
+        translate([-bearing_inner_dia/2-xy_thickness-tolerance*2,0,pin_space*0.5])
+        rotate([0,90,0])
+        cylinder(d = bolt_d, h = bearing_inner_dia + xy_thickness*2 + tolerance*4);
+        
+        translate([-xy_thickness/2-tolerance,-bearing_inner_dia/2-xy_thickness-tolerance*2,0])
+        cube([xy_thickness+tolerance*2, bearing_inner_dia + xy_thickness*2 + tolerance*4,pin_space+tolerance]);
     }
-}
-
-module rack_base() {
     
 }
 
+module transformer_plane() {
+    
+    width = 4.3 - tolerance*2;
+    height = 10.5 - tolerance*2;
+    length = 12;
+    
+    module hole_plane() {
+        difference() {
+        cube([pin_space, xy_thickness, height]);
+        translate([pin_space/2, xy_thickness+tolerance, height/2])
+        rotate([90,0,0])
+        cylinder(d = bolt_d, h = xy_thickness+tolerance*2);
+        }
+    }
+    
+    translate([0,-xy_thickness/2,0])
+    hole_plane();
+
+    
+    translate([pin_space,-width/2,0])
+    cube([length, width, height]);
+    
+    translate([pin_space+length,-xy_thickness/2,0])
+    hole_plane();
+    
+}
+
+transformer_plane();
+
+//rotate([180,0,0])
+//pin_flat_adapter();
+
 //rack();
 
-
-//pin_shape(cut = false);
-//echo(acos(0));
-
-
-rotate([0,-90,0])
-pin();
-
-
-
+//rotate([0,90,0])
+//pin();
 //handle_base();
 
 //handle();
-
-//cylinder(d = 6.1, h = 5);
