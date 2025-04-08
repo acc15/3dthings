@@ -140,7 +140,13 @@ module assembly() {
 
 }
 
-rotate([90,0,0])
+//holder_base(false);
+//holder_base(true);
+
+rotate([0,90,0])
+solder_pillar();
+
+*rotate([90,0,0])
 assembly();
 
 
