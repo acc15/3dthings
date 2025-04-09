@@ -70,26 +70,29 @@ module heat_sink() {
 
 }
 
-fan_hole_outer_dim = [19.4, 15.15];
-fan_hole_inner_dim = [17, 12.6];
+fan_height = 15;
+fan_hole_outer_dim = [20, fan_height];
+fan_hole_inner_dim = [17, 12.5];
 fan_hole_offset = [25,0,6];
-fan_thickness = 1.15;
+fan_lock_width = 3.5;
+fan_lock_offset = 0.5; // 0..1 interpolated with duct_in_outer_height
 
 duct_tolerance = 0.1;
-
-duct_thickness = 0.48*3;
+duct_thickness = 0.48*2;
 
 duct_inner_width = fan_hole_outer_dim[0] + duct_tolerance*2;
 duct_outer_width = duct_inner_width + duct_thickness*2;
+
 duct_in_inner_height = fan_hole_outer_dim[1] + duct_tolerance*2;
 duct_in_outer_height = duct_in_inner_height + duct_thickness*2;
 duct_in_inner_z = fan_hole_offset[2] - duct_tolerance;
 duct_in_outer_z = duct_in_inner_z - duct_thickness;
-
 duct_in_length = 3; // in "nose" length
+
 duct_out_inner_height = 2; // out hole size
 duct_out_outer_height = duct_out_inner_height + duct_thickness*2;
 duct_out_length = 4; // out "nose" length
+
 duct_distance = 10; // distance from nozzle
 duct_angle = 55; // flow angle (same as nozzle angle - 110/2)
 
@@ -125,7 +128,11 @@ module duct_outer_shape() {
 module duct() {
     
     linear_extrude(duct_thickness)
-    duct_outer_shape();
+    difference() {
+        duct_outer_shape();
+        translate([fan_hole_offset[0], duct_in_outer_z + duct_in_outer_height*fan_lock_offset-fan_lock_width/2])
+        square([duct_in_length, fan_lock_width]);
+    }
 
     linear_extrude(duct_outer_width)
     difference() {
@@ -146,30 +153,35 @@ module flow_test_cube() {
     cube([duct_out_inner_height,duct_inner_width,20]);
 }
 
-*rotate([0,90,0]) // print mode
+//duct();
+
+
+// duct (print mode)
+*rotate([0,90,0]) 
 translate([-fan_hole_offset[0]-duct_in_length, -duct_in_outer_z,0])
 duct();
 
+// duct (preview mode)
 color("red")
 translate([0,duct_outer_width/2,0])
 rotate([90,0,0]) // print mode
 duct();
 
-
 #flow_test_cube();
-
-
-
-
 
 heater_block();
 
-*translate([-heatsink_heater_offset[0],-heatsink_heater_offset[1],heater_height-heatsink_thickness-heater_heatsink_z])
+heatsink_z = heater_height-heater_heatsink_z-heatsink_thickness;
+
+translate([-heatsink_heater_offset[0],-heatsink_heater_offset[1],heatsink_z])
 heat_sink();
 
-
-translate(fan_hole_offset)
+#translate(fan_hole_offset)
 translate([25.5,-17.5,0])
 rotate([0,0,-90])
 color("green")
 import("fan_model.stl");
+
+heatsink_fan_z_distance = heatsink_z - fan_hole_offset[2] - fan_height;
+heatsink_duct_z_distance = heatsink_z - duct_in_outer_z - duct_in_outer_height;
+echo(heatsink_z=heatsink_z, fan_z=fan_hole_offset[2], heatsink_fan_z_distance=heatsink_fan_z_distance, heatsink_duct_z_distance=heatsink_duct_z_distance);
