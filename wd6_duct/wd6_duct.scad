@@ -46,6 +46,7 @@ duct_tolerance = 0.1;
 duct_thickness = 0.48*2;
 duct_mount_thickness = 0.2*12;
 duct_mount_length = fan_mount_height - duct_thickness;
+duct_mount_hole_dia = 2.5;
 
 duct_inner_width = fan_out_outer_dim[0] + duct_tolerance*2;
 duct_outer_width = duct_inner_width + duct_thickness*2;
@@ -60,7 +61,7 @@ duct_out_inner_height = 2; // out hole size
 duct_out_outer_height = duct_out_inner_height + duct_thickness*2;
 duct_out_length = 4; // out "nose" length
 
-duct_distance = 10; // distance from nozzle
+duct_distance = 15; // distance from nozzle
 duct_angle = 55; // flow angle (same as nozzle angle - 110/2)
 
 heatsink_duct_z_distance = heatsink_offset[2] - duct_in_outer_z - duct_in_outer_height;
@@ -169,7 +170,13 @@ module duct() {
     duct_outer_shape();
     
     translate([fan_out_offset[0] + duct_in_length - duct_mount_thickness, duct_in_outer_z + duct_in_outer_height,0])
-    cube([duct_mount_thickness, duct_mount_length, duct_outer_width]);
+    difference() {
+        cube([duct_mount_thickness, duct_mount_length, duct_outer_width]);
+        
+        translate([-1,duct_mount_length/2,duct_outer_width/2])
+        rotate([0,90,0])
+        cylinder(d = duct_mount_hole_dia, h = duct_mount_thickness + 2);
+    }
 
 }
 
@@ -231,7 +238,7 @@ module fan_mount_shape() {
     difference() {
 
         fan_mount_hull_shape();
-    
+        
         translate(-fan_hole_offsets[0])
         circle(d = fan_mount_hole_dia);
         
@@ -242,6 +249,8 @@ module fan_mount_shape() {
         translate(heatsink_fan_offset)
         xy_array(heatsink_fan_distance, heatsink_fan_pattern)
         circle(d = 3.5);
+        
+        circle(d = 35); 
     
     }
    
@@ -254,85 +263,86 @@ module fan_mount() {
         union() {
     
             linear_extrude(fan_mount_thickness)
-            difference() {
-                fan_mount_shape();
-                circle(d = 34);
-            }
-            
+            fan_mount_shape();
             
             linear_extrude(fan_mount_height)
-            difference() {
-                fan_mount_shape();
-                offset(-fan_mount_edge_thickness)
-                fan_mount_shape();
-                
-                translate([-fan_width/2,fan_length/2+fan_right_half_offset+duct_tolerance+duct_thickness-duct_outer_width-fan_mount_edge_thickness-fan_mount_tolerance*2])
-                square([fan_width/2,fan_mount_edge_thickness+fan_mount_tolerance*2]);
+            union() {
+                difference() {
+                    fan_mount_shape();
+                    
+                    offset(-fan_mount_edge_thickness)
+                        fan_mount_shape();
+                    
+                    *translate([-fan_width/2,fan_length/2+fan_right_half_offset+duct_tolerance+duct_thickness-duct_outer_width-fan_mount_edge_thickness-fan_mount_tolerance*2])
+                    square([fan_width/2,fan_mount_edge_thickness+fan_mount_tolerance*2]);
 
+                }
+                intersection() {
+                    union() {
+                        translate([-fan_mount_edge_thickness/2,-fan_length/2+fan_right_half_offset]) {
+                            square([fan_mount_edge_thickness,fan_length + heatsink_width]);
+                            
+                            translate([-fan_width/4,0])
+                            square([fan_mount_edge_thickness,fan_length + heatsink_width]);
+                            
+                            translate([fan_width/4,0])
+                            square([fan_mount_edge_thickness,fan_length + heatsink_width]);
+                        }
+                        translate([-fan_width/2,+fan_length/2+fan_right_half_offset+duct_tolerance+duct_thickness])
+                        square([fan_width, fan_mount_edge_thickness]);                        
+                    }
+                    
+                    difference() {
+                        fan_mount_hull_shape();
+                        circle(d = 35); 
+                    }
+                }
             }
         }
         
+        translate([-fan_width/2+duct_in_length-1,fan_length/2+fan_right_half_offset+duct_tolerance+duct_thickness-duct_outer_width/2,fan_mount_tolerance + duct_thickness + duct_mount_length/2])
+        rotate([0,90,0])
+        cylinder(d = duct_mount_hole_dia, h = fan_mount_edge_thickness + 2);
         
         translate(fan_to_heatsink_offset)
         translate(heatsink_fan_offset)
         xy_array(heatsink_fan_distance, heatsink_fan_pattern)
-        translate([0,0,-0.1])
         cylinder(d1 = 6, d2 = 3.5, h = 2);
-
+        
         
     }
 }
 
-module duct_clip() {
-    linear_extrude(fan_mount_height - fan_mount_thickness)
-    difference() {
-        square([duct_mount_thickness + duct_tolerance + fan_mount_tolerance*2 + fan_mount_edge_thickness*3, duct_outer_width + fan_mount_edge_thickness + fan_mount_tolerance]);
-        translate([fan_mount_edge_thickness, fan_mount_edge_thickness])
-        square([duct_mount_thickness + duct_tolerance + fan_mount_tolerance*2 + fan_mount_edge_thickness, duct_outer_width + fan_mount_tolerance + 1]);
-    }
+
+module assembly() {
+    color("red")
+    translate([0,duct_outer_width/2,0])
+    rotate([90,0,0]) // print mode
+    duct();
+    
+    heater_block();
+    
+    *translate(heatsink_offset)
+    heat_sink();
+    
+    translate([0,0,fan_height+fan_mount_tolerance])
+    translate(fan_offset)
+    color("blue")
+    fan_mount();
+    
+    translate(fan_offset)
+    rotate([0,0,-90])
+    color("green")
+    import("fan_model.stl");
 }
 
-*translate([-fan_width/2 + duct_in_length - fan_mount_tolerance-fan_mount_edge_thickness-duct_mount_thickness,fan_length/2+fan_right_half_offset + duct_tolerance + duct_thickness - duct_outer_width - fan_mount_edge_thickness - fan_mount_tolerance,fan_height + fan_mount_thickness])
-translate(fan_offset)
-duct_clip();
 
-*translate([0,0,-15])
-rotate([0,0,-90])
-import("fan_model.stl");
+echo(heatsink_z=heatsink_offset[2], fan_z=fan_out_offset[2], heatsink_fan_z_distance=heatsink_fan_z_distance, heatsink_duct_z_distance=heatsink_duct_z_distance, fan_mount_height=fan_mount_height, fan_mount_edge_height=fan_mount_height-fan_mount_thickness, duct_mount_length=duct_mount_length, duct_mount_bolt_length =duct_mount_thickness + fan_mount_edge_thickness);
 
+*assembly();
 
-translate([0,0,fan_height+fan_mount_tolerance])
-translate(fan_offset)
-color("blue")
-fan_mount();
-
-
-// duct (print mode)
-*rotate([0,90,0]) 
+rotate([0,90,0]) 
 translate([-fan_out_offset[0]-duct_in_length, -duct_in_outer_z,0])
 duct();
-
-// duct (preview mode)
-color("red")
-translate([0,duct_outer_width/2,0])
-rotate([90,0,0]) // print mode
-duct();
-
-//#flow_test_cube();
-
-*heater_block();
-
-translate(heatsink_offset)
-heat_sink();
-
-translate(fan_offset)
-rotate([0,0,-90])
-color("green")
-import("fan_model.stl");
-
-
-echo(heatsink_z=heatsink_offset[2], fan_z=fan_out_offset[2], heatsink_fan_z_distance=heatsink_fan_z_distance, heatsink_duct_z_distance=heatsink_duct_z_distance, fan_mount_height=fan_mount_height);
-
-
-*duct_clip();
 *fan_mount();
+

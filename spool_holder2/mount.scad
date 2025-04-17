@@ -1,3 +1,6 @@
+use <threads.scad>;
+use <../bendlib/bendlib.scad>;
+
 thickness = 4;
 tolerance = 0.2;
 
@@ -16,9 +19,6 @@ rod_length = spool_length + thickness * 4 + tolerance * 2 + 16;
 
 mount_dia = rod_dia + thickness*2;
 mount_rod_length = 40;
-
-guide_holder_height = 10;
-guide_dia = 4;
 
 $fa = 0.5;
 $fs = 0.5;
@@ -95,45 +95,6 @@ module holder_mount(lr = false) {
             translate([0, mount_dia])
                 circle(d = rod_dia + tolerance*2);
         }
-    }
-}
-
-
-module guide_holder(align = true) {
-    translate([0,0,mount_dia])
-    rotate([align ? -offset_angle : 0,0,0])
-    translate([0,0,200])
-    difference() {
-        union() {
-
-            cylinder(d = mount_dia, h = guide_holder_height);
-
-
-            translate([0,-thickness/2,0])
-            cube([spool_length/2, thickness, guide_holder_height]);
-
-            translate([0,-mount_dia/2,0])
-            cube([spool_length/2, mount_dia, thickness]);
-            
-            translate([spool_length/2,0,0])
-            difference() {
-                sphere(r = guide_holder_height);
-                translate([-guide_holder_height-tolerance, -guide_holder_height-tolerance, -guide_holder_height-tolerance])
-                cube([guide_holder_height*2+tolerance*2,guide_holder_height*2+tolerance*2,guide_holder_height+tolerance]);
-            }
-
-        }
-        
-
-        translate([spool_length/2,0,0])
-        rotate([90+offset_angle,0,0])
-        translate([0,0,-guide_holder_height*1.5])
-        cylinder(d = guide_dia + tolerance*2, h = guide_holder_height*3);
-
-        translate([0,0,-tolerance])
-        cylinder(d = hole_dia, h = guide_holder_height + tolerance*2);
-        translate([0,0,-tolerance])
-        cylinder(d = hole_dia, h = guide_dia + tolerance*2);
     }
 }
 
@@ -277,6 +238,248 @@ module holder_mount2(lr, demo = true) {
 
 }
 
+
+guide_holder_thickness = 0.48*4;
+guide_holder_hole = 9;
+guide_holder_dia = guide_holder_hole + guide_holder_thickness*2;
+guide_holder_bolt_dia = 3.4;
+
+module guide_holder_p1() {
+    difference() {
+
+        union() {
+            cylinder(d = guide_holder_dia, h = guide_holder_dia);
+            translate([0,-guide_holder_dia/2,0])
+            difference() {
+                cube([guide_holder_dia, guide_holder_dia, guide_holder_dia]);
+                translate([guide_holder_thickness,guide_holder_thickness,-1])
+                cube([guide_holder_hole, guide_holder_hole, guide_holder_dia+2]);
+            }
+        }
+
+        translate([0,0,-1])
+        cylinder(d = guide_holder_hole, h = guide_holder_dia + 2);
+        
+        translate([guide_holder_dia+1,0,guide_holder_dia/2])
+        rotate([0,-90,0])
+        linear_extrude(guide_holder_thickness+2)
+        hull() {
+            circle(d = guide_holder_bolt_dia);
+            translate([guide_holder_dia/2,0])
+            circle(d = guide_holder_bolt_dia);
+        }
+        
+    }
+}
+
+module guide_holder_p2() {
+
+    difference() {
+
+        linear_extrude(guide_holder_dia)
+        difference() {
+            union() {
+            
+                translate([-guide_holder_dia/2, -guide_holder_dia/2,0])
+                difference() {
+                    square([guide_holder_dia, guide_holder_dia]);
+                    translate([guide_holder_thickness,guide_holder_thickness])
+                    square([guide_holder_hole, guide_holder_hole]);
+                }
+        
+                translate([guide_holder_dia/2, 0,0])
+                offset(guide_holder_thickness)
+                hull() {
+                    circle(d = guide_holder_hole);
+                    translate([spool_length/2,0])
+                    circle(d = guide_holder_hole);
+                }
+            
+            }
+            
+            translate([guide_holder_dia/2, 0,0])
+            hull() {
+                circle(d = guide_holder_hole);
+                translate([spool_length/2,0])
+                circle(d = guide_holder_hole);
+            }
+        }
+        
+        translate([-guide_holder_dia/2-1,0,guide_holder_dia/2])
+        #rotate([0,90,0])
+        cylinder(d = guide_holder_bolt_dia, h = guide_holder_thickness + 2);
+    
+    }
+
+        
+}
+
+module claw(r, t, d) {
+    
+}
+
+claw();
+
+//guide_holder_p2();
+
+module ptfe_holder(part) {
+    
+    mount_dia = rod_dia + 1;
+    thickness = 0.48*4;
+    bolt_head_small_dia = 9.9 + tolerance*2;
+    bolt_head_dia = bolt_head_small_dia * 2 / sqrt(3);
+    bolt_dia = 6 + tolerance*2;
+    bolt_thickness = 4 + tolerance * 2;
+    nut_thickness = 4 + tolerance * 2;
+    
+    dia = max(mount_dia, bolt_head_dia) + thickness * 2;
+
+    module head_model(thickness) {
+        hull() {
+            $fn = 6;
+            cylinder(d = bolt_head_dia, h = thickness);
+            translate([-dia/2,0])
+            cylinder(d = bolt_head_dia, h = thickness);
+        }
+    }
+
+    module p1() {
+            
+        difference() {
+        
+            linear_extrude(dia)
+            difference() {
+                union() {
+                    circle(d = dia);
+                    translate([0,-dia/2])
+                    square([dia/2 + bolt_thickness + thickness, dia]);
+                }
+                circle(d = mount_dia);
+            }
+            
+            translate([dia/2,0,dia/2])
+            rotate([0,90,0])
+            #union() {
+            
+                head_model(bolt_thickness);
+
+                translate([0,0,bolt_thickness])
+                hull() {
+                    cylinder(d = bolt_dia, h = thickness + tolerance);
+                    translate([-dia/2,0])
+                    cylinder(d = bolt_dia, h = thickness + tolerance);
+                }
+            }
+        }
+        
+    }
+    
+    module p2() {
+        
+        tune_length = 20;
+        length = thickness*2 + nut_thickness + tune_length;
+        
+        
+        difference() {
+            translate([0, -dia/2,0])
+            cube([length, dia, dia]);
+            
+            translate([thickness, 0, dia/2])
+            rotate([0,90,0])
+            #head_model(nut_thickness);
+            
+            translate([-tolerance, 0, dia/2])
+            rotate([0,90,0])
+            #cylinder(d = bolt_dia, h = length + tolerance);
+            
+            translate([length - tune_length, -dia/2 + thickness, -tolerance])
+            cube([tune_length+tolerance, dia - thickness * 2, dia + tolerance*2]);
+        }
+        
+    }
+    
+    p2();
+    
+}
+
+
+ptfe_holder();
+
+module filament_filter() {
+    
+    $fa = 0.5;
+    $fs = 0.5;
+    
+    filament_dia = 1.75;
+    xy_thickness = 0.48*5;
+    z_thickness = 0.2 * 5;
+    
+    filter_thickness = 7;
+    filter_length = 30;
+    
+    inner_dia = filter_thickness*2 + filament_dia + tolerance*2;
+    outer_dia = inner_dia + xy_thickness*2;
+    
+    thread_pitch = 1;
+    thread_angle = 45;
+    thread_dia = (outer_dia + inner_dia) / 2;
+    thread_length = filter_length/3;
+    
+    module thread_test() {
+        *difference() {
+            union() {
+                translate([0,0,3])
+                ScrewThread(thread_dia, 7, pitch = thread_pitch, tooth_angle=thread_angle);
+                cylinder(d = outer_dia, h = 3);
+            }
+            translate([0,0,-1])
+            cylinder(d = inner_dia, h = 12);
+        }
+        
+        
+        difference() {
+            union() {
+                translate([0,0,3])
+                ScrewHole(thread_dia, 7, pitch = thread_pitch, tooth_angle=thread_angle) {
+                    cylinder(d = outer_dia, h = 7);
+                }
+                cylinder(d = outer_dia, h = 3);
+            }
+            translate([0,0,-1])
+            cylinder(d = inner_dia, h = 12);
+        }
+        
+    }
+       
+    
+}
+
+module ptfe_tolerance_test() {
+    $fa = 0.2;
+    $fs = 0.2;
+    
+    wall = 0.48*4;
+    ptfe_dia = 4;
+    distance = ptfe_dia + wall;
+
+    linear_extrude(10)
+    difference() {
+        square([wall + distance*3, wall+distance*3]);
+        for (i = [0:2]) {
+            for (j = [0:2]) {
+                translate([wall+ptfe_dia/2 + j*distance, wall+ptfe_dia/2 + i*distance])
+                    circle(d = ptfe_dia + 0.1 * ((i*3) + j));
+            }
+        }
+    }
+}
+
+//ptfe_tolerance_test();
+
+
+//filament_filter();
+   
+
 /*
 mount4(true);
 mount4(false);
@@ -285,7 +488,6 @@ mount4(false);
 #translate([-mount_dia,mount_dia/2,-bolt_dia-mount_dia/2])
 rotate([0,90,0])
 cylinder(d = rod_dia, h = bolt_distance + mount_dia * 2);    
-
 
 holder_mount2(false);
 holder_mount2(true);
@@ -300,11 +502,10 @@ if ($preview) {
     translate([x_distance + spool_length / 2 - spool_h/2, y_distance, z_distance])
     rotate([0,90,0])
     spool(h = spool_h);
-}
+}*/
 
-*/
 
-holder_mount2(false, false);
+//holder_mount2(false, false);
 
 
 echo(mount_dia = mount_dia, 
