@@ -118,22 +118,17 @@ function bl_tr(v, m) = let(l = len(m), mn = bl_normalize(m))
 /** 
     Normalizes radius[]/diameter[] values to [x_radius, y_radius] array
  */
-function bl_radius_cast(r, d) = 
-    r == undef 
-        ? d == undef 
-            ? [undef, undef] 
-            : let (da = concat(d, d)) [ da[0] / 2, da[1] / 2 ]
-        : let(ra = concat(r, r)) [ ra[0], ra[1] ];
+function bl_radius_cast(radius) = is_list(radius) ? len(radius) >= 2 ? radius : [radius[0], radius[0]] : [radius, radius];
 
 /** 
     Normalizes [start, end] angle array, 
     if `a` is scalar or single element array then angles is [0, a], 
     otherwise first two elements are [start, end] angles
  */
-function bl_angle_cast(a) = let(aa = concat(a)) len(aa) < 2 ? [0, a] : [aa[0], aa[1]];
+function bl_angle_cast(angle) = is_list(angle) ? len(angle) >= 2 ? angle : [0, angle[0]] : [0, angle];
 
 /** Approximation of ellipse perimeter (about 5% error) */
-function bl_ellipse_perimeter(r, d) = let(ra = bl_radius_cast(r, d)) 
+function bl_ellipse_perimeter(radius) = let(ra = bl_radius_cast(radius)) 
     2 * PI * ((ra[0] == ra[1]) ? ra[0] : sqrt((ra[0]*ra[0] + ra[1]*ra[1]) / 2));
 
 /** 
@@ -149,38 +144,59 @@ function bl_ellipse_perimeter(r, d) = let(ra = bl_radius_cast(r, d))
         }
     
  */
-function bl_arc_steps(r, d, a) = let(aa = bl_angle_cast(a)) $fn > 0 ? $fn : ceil(max(min(abs(aa[1] - aa[0]) / $fa, bl_ellipse_perimeter(r, d) / $fs), 5));
+function bl_arc_steps(radius, angle) = let(aa = bl_angle_cast(angle)) $fn > 0 ? $fn : ceil(max(min(abs(aa[1] - aa[0]) / $fa, bl_ellipse_perimeter(radius) / $fs), 5));
 
 /** Computes single arc point at given angle `a` */
-function bl_arc_pt(r, d, a, p = [0,0]) = let(ra = bl_radius_cast(r, d)) [cos(a) * ra[0] + p[0], sin(a) * ra[1] + p[1]];
+function bl_arc_pt(radius, angle, position = [0,0]) = let(ra = bl_radius_cast(radius)) [cos(angle) * ra[0] + position[0], sin(angle) * ra[1] + position[1]];
 
 /** Computes arc points using fixed amount of steps */
-function bl_arc_loop(r, d, a, n, l = true, p = [0,0]) =
-    let(ra = bl_radius_cast(r, d), aa = bl_angle_cast(a)) ra[0] == 0 || ra[1] == 0 
-        ? [p] 
-        : [ for(i = [0 : n - (l ? 0 : 1)]) bl_arc_pt(ra, undef, aa[0] + i * (aa[1] - aa[0]) / n, p) ];
+function bl_arc_loop(radius, angle, steps, position = [0,0], slice = [0,0]) =
+    let(ra = bl_radius_cast(radius), aa = bl_angle_cast(angle)) ra[0] == 0 || ra[1] == 0 
+        ? [ position ]
+        : [ for(i = [slice[0] : steps + slice[1]]) bl_arc_pt(ra, aa[0] + i * (aa[1] - aa[0]) / steps, position) ];
 
 /** Computes arc */
-function bl_arc(r, d, a, l = true, p = [0,0]) = bl_arc_loop(r, d, a, bl_arc_steps(r, d, a), l, p);
+function bl_arc(radius, angle, position = [0,0], slice = [0,0]) = bl_arc_loop(radius, angle, bl_arc_steps(radius, angle), position, slice);
 
 /** Generates NGON shape */
-function bl_ngon(r, d, n, p = [0,0]) = bl_arc_loop(r, d, 360, n, false, p);
+function bl_ngon_points(radius, sides = 3, position = [0,0]) = bl_arc_loop(radius, 360, sides, position);
+
+/** Creates 2d rectangle shape with specified rounded corner radiuses (radius parameter can be list with 1, 2, 4 length)*/
+module bl_ngon(radius, sides = 3, position = [0,0]) {
+    polygon(bl_ngon_points(radius, sides, position));
+}
 
 /** Generates star shape */
-function bl_star(r, d, n) = let(ra = bl_radius_cast(r, d), m = n * 2) 
-    [ for (i = [0:m-1]) [ cos(i * 360 / m) * (i % 2 == 0 ? ra[0] : ra[1]), sin(i * 360 / m) * (i % 2 == 0 ? ra[0] : ra[1]) ] ];
-        
+function bl_star_points(radius, sides = 5, position = [0,0]) = let(ra = bl_radius_cast(radius), m = sides * 2) 
+    [ for (i = [0:m-1]) let(r = i % 2 == 0 ? ra[0] : ra[1]) [ cos(i * 360 / m) * r, sin(i * 360 / m) * r ] + position ];
+       
+/** Generates star shape */
+module bl_star(radius, sides = 5, position = [0,0]) {
+    polygon(bl_star_points(radius, sides, position));
+}
+    
 /** Creates 2d rectangle shape with specified rounded corner radiuses */
-function bl_rect(dim, r = 0, center = false) = let(
-    ltrb = center ? [-dim[0]/2, dim[1]/2, dim[0]/2, -dim[1]/2] : [0,dim[1],dim[0],0], 
-    left = ltrb[0], top = ltrb[1], right = ltrb[2], bottom = ltrb[3],
-    rv = (len(r) == 4) ? [r[0],r[1],r[2],r[3]] : [r, r, r, r])
-    concat(
-        bl_arc(rv[0], 0, 90, true, [right - rv[0], top - rv[0]]),
-        bl_arc(rv[1], 90, 180, true, [left + rv[1], top - rv[1]]),
-        bl_arc(rv[2], 180, 270, true, [left + rv[2], bottom + rv[2]]),
-        bl_arc(rv[3], 270, 360, true, [right - rv[3], bottom + rv[3]])
-        );
+function bl_rect_points(dim, radius = 0, center = false) = let(
+    left = center ? -dim[0]/2 : 0,
+    bottom = center ? -dim[1]/2 : 0,
+    right = center ? dim[0]/2 : dim[0],
+    top = center ? dim[1]/ 2 : dim[1],
+    rv = is_list(radius)
+        ? len(radius) >= 4 ? radius : len(radius) >= 2 
+            ? [radius[0], radius[0], radius[1], radius[1]] 
+            : [radius[0], radius[0], radius[0], radius[0]]
+        : [radius, radius, radius, radius]
+) concat(
+    bl_arc(radius = rv[0], angle = [0, 90], position = [right - rv[0], top - rv[0]]),
+    bl_arc(radius = rv[1], angle = [90, 180], position = [left + rv[1], top - rv[1]]),
+    bl_arc(radius = rv[2], angle = [180, 270], position = [left + rv[2], bottom + rv[2]]),
+    bl_arc(radius = rv[3], angle = [270, 360], position = [right - rv[3], bottom + rv[3]])
+);
+    
+/** Creates 2d rectangle shape with specified rounded corner radiuses (radius parameter can be list with 1, 2, 4 length)*/
+module bl_rect(dim, radius = 0, center = false) {
+    polygon(bl_rect_points(dim, radius, center));
+}
     
 /** Generates array of triangles required to connect two profiles */
 function bl_faces(a_off, a_len, b_off, b_len) = a_len > b_len
