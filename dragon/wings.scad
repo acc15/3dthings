@@ -1,4 +1,4 @@
-include <bendlib.scad>
+include <../bendlib/bendlib.scad>
 include <MCAD/involute_gears.scad>
 
 gear_hole = 2.4;

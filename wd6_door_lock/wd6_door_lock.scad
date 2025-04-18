@@ -28,7 +28,6 @@ module square_fillet_one_edge(dim, fillet)  {
     offset(fillet)
     offset(delta = -fillet)
     square([dim[0], dim[1] + fillet]);
-    //translate([-tol,-tol])
     
     translate([-1,-1])
     square([dim[0] + 2, fillet + 1]);
@@ -54,35 +53,42 @@ module main_side() {
     
     hole_distance = 64;
     
-    
-    
-    //translate([0,-handle_width])
     difference() {
-        linear_extrude(handle_thickness)
+    
+        translate([0,-handle_width, 0])
         difference() {
+            linear_extrude(handle_thickness)
+            difference() {
+                
+                square_fillet_one_edge([mount_height, handle_width + mount_width], fillet);
+                
+                translate([(mount_height - hole_distance) / 2, 9.3 / 2])
+                circle(d = 4.2);
+                
+                translate([(mount_height - hole_distance) / 2 + hole_distance, 9.3 / 2])
+                circle(d = 4.2);            
+            }
             
-            square_fillet_one_edge([mount_height, handle_width + mount_width], fillet);
+            translate([-tol,0,0])
+            rotate([90,0,90])
+            linear_extrude(mount_height + tol*2)
+            polygon([
+                [9.6 - tol, -tol], 
+                [handle_width + mount_width + tol, -tol], 
+                [handle_width + mount_width + tol, magnet_thickness + tol], 
+                [9.6 + magnet_thickness + tol, magnet_thickness + tol]
+            ]);
             
-            translate([(mount_height - hole_distance) / 2, 9.3 / 2])
-            circle(d = 4.2);
-            
-            translate([(mount_height - hole_distance) / 2 + hole_distance, 9.3 / 2])
-            circle(d = 4.2);            
-        }
-        
-        translate([-tol,0,0])
-        rotate([90,0,90])
-        linear_extrude(mount_height + tol*2)
-        polygon([
-            [9.6 - tol, -tol], 
-            [handle_width + mount_width + tol, -tol], 
-            [handle_width + mount_width + tol, magnet_thickness + tol], 
-            [9.6 + magnet_thickness + tol, magnet_thickness + tol]
-        ]);
-        
-        translate([xy_thickness,xy_thickness + handle_width + tol,magnet_thickness])
-            cube([mount_height - xy_thickness*2, magnet_dia + tol*2, 1 + tol*2]);
 
+        }
+    
+        for (i = [0:magnet_count-1])
+        translate([i * (mount_height / magnet_count) + mount_height / (magnet_count*2), mount_width / 2, magnet_thickness]) {
+            #cylinder(d1 = 6, d2 = 3.4, h = 2);
+            
+            #cylinder(d = 3.4, h  = magnet_thickness+2);
+        }
+    
     }
 
 }
@@ -92,11 +98,11 @@ module main_side() {
 //tt = 5;
 
 
-//translate([0,0,6])
-*rotate([180,0,0])
+
+
 main_side();
 
-translate([0,10,magnet_thickness])
-rotate([180,0,0])
-magnet_side();
+//translate([0,10,magnet_thickness])
+//rotate([180,0,0])
+#magnet_side();
 
