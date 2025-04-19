@@ -176,7 +176,7 @@ module bl_star(radius, sides = 5, position = [0,0]) {
 }
     
 /** Creates 2d rectangle shape with specified rounded corner radiuses */
-function bl_rect_points(dim, radius = 0, center = false) = let(
+function bl_square_points(dim, radius = 0, center = false) = let(
     left = center ? -dim[0]/2 : 0,
     bottom = center ? -dim[1]/2 : 0,
     right = center ? dim[0]/2 : dim[0],
@@ -194,8 +194,8 @@ function bl_rect_points(dim, radius = 0, center = false) = let(
 );
     
 /** Creates 2d rectangle shape with specified rounded corner radiuses (radius parameter can be list with 1, 2, 4 length)*/
-module bl_rect(dim, radius = 0, center = false) {
-    polygon(bl_rect_points(dim, radius, center));
+module bl_square(dim, radius = 0, center = false) {
+    polygon(bl_square_points(dim, radius, center));
 }
     
 /** Generates array of triangles required to connect two profiles */
