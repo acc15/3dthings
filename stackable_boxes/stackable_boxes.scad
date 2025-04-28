@@ -8,16 +8,16 @@ z_thickness = 0.2*5;
 
 box_thickness = [xy_thickness,z_thickness,xy_thickness];
 
-//box_inner_dimensions = [20, 20, 60];
-box_inner_dimensions = [10,10,5];
+box_inner_dimensions = [10, 10, 65];
+//box_inner_dimensions = [10,10,5];
 box_outer_dimensions = box_inner_dimensions + box_thickness*2 - [0, box_thickness[1], 0];
 
 box_handle_thickness = [xy_thickness, xy_thickness] * 1.5;
 
 function box_handle_dimensions(outer_dim) = [
     min(box_outer_dimensions[0], 15), 
-    min(z_thickness*4, outer_dim[2] / 4), 
-    min(6, outer_dim[1] / 4) 
+    min(z_thickness*4, outer_dim[2]), 
+    min(6, outer_dim[1]) 
 ];
 
 box_handle_positions = [0.5, 0];
@@ -51,28 +51,28 @@ function cells_dim(dim, cells) = [ for (i=[0:len(dim)-1]) (i < len(cells) ? shel
 module clip_sphere(radius, factors) {
     dia = radius*2;
     
-    translate([-(factors[1] - 0.5)*dia,0,0])
+
+}
+
+module clip(lr, radius = clip_radius, cut_amount = 0) {
+    mirror([lr,0,0])
+    translate([-cut_amount,0,0])
     intersection() {
-        sphere(d = dia);
-        translate([dia * (factors[0] - 0.5),-dia/2,-dia/2])
-        cube([(factors[1] - factors[0])*dia, dia,dia]);
+        sphere(r = radius);
+        translate([cut_amount,-radius,-radius])
+        cube([radius, radius*2,radius*2]);
     }
 }
 
-module clip(lr, r = clip_radius) {
-    mirror([lr,0,0])
-    clip_sphere(r, [0,0.5]);
-}
-
-module box_clips(radius = clip_radius, cells = [1,1]) {   
+module box_clips(cells = [1,1], radius = clip_radius, cut_amount = box_thickness[0]) {   
     for (i=[0:cells[1]-1]) {
         translate([0,shell_distance[1]*i,box_outer_dimensions[2] - box_thickness[1] - clip_radius]) {
-            translate([box_thickness[0], clip_radius,0])
-            clip(0, radius);
-            translate([box_thickness[0], box_outer_dimensions[1] - clip_radius,0])
-            clip(0, radius);
-            translate([shell_distance[0]*(cells[0]-1) + box_outer_dimensions[0] - box_thickness[0], box_outer_dimensions[1]*0.5,0])
-            clip(1, radius);
+            translate([0, clip_radius,0])
+            clip(1, radius, cut_amount);
+            translate([0, box_outer_dimensions[1] - clip_radius,0])
+            clip(1, radius, cut_amount);
+            translate([shell_distance[0]*(cells[0]-1) + box_outer_dimensions[0], box_outer_dimensions[1]*0.5,0])
+            clip(0, radius, cut_amount);
         }
     }
 }
@@ -105,7 +105,7 @@ module box(cells = [1,1], with_clips = true) {
         cube(inner_dim + [0,1,0]);
     }
     if (with_clips) {
-        box_clips(clip_radius, cells);
+        box_clips(cells, clip_radius, box_thickness[0]);
     }
     box_handle(outer_dim);
 }
@@ -179,9 +179,9 @@ module shell(cells = [1,1], with_clips = true) {
             linear_extrude(shell_outer_dimensions[2])
             shell_shape(cells);
         }
-        if (with_clips) {
+        #if (with_clips) {
             translate(shell_box_distance)
-            box_clips(clip_radius + shell_box_clip_tolerance, cells);
+            box_clips(cells, clip_radius + shell_box_clip_tolerance, box_thickness[0]);
         }
     }    
 }
@@ -225,7 +225,7 @@ module box_system_demo(time) {
 
 }
 
-module print_aligned_box(cells) {
+module print_aligned_box(cells = [1,1]) {
     translate([(cells[0]-1)*shell_distance[0] + box_outer_dimensions[0],0,0])
     rotate([90,0,180])
     box(cells);
@@ -238,14 +238,20 @@ module printable_box_with_shell(cells, distance = 5) {
 
 }
 
-module test_min_set() {
-    shell([1,1]);
+module print_set() {
+
+    n_shells = 4;
+    n_boxes = 4;
     
-    translate([0,shell_distance[1] + 5])
-    shell([1,1]);
+    for (i = [0:n_shells-1]) {    
+        translate([0,(shell_distance[1] + 5)*i])
+        shell([1,1]);
+    }
     
-    translate([shell_distance[1]+5, 0])
-    print_aligned_box([1,1]);
+    for (i = [0:n_boxes-1]) {    
+        translate([shell_distance[1]+5+(box_outer_dimensions[0]+2)*i, 0])
+        print_aligned_box([1,1]);
+    }
     
 }
 
@@ -275,6 +281,14 @@ module test_set() {
     print_aligned_box([1,2]);
 }
 
-test_min_set();
+//print_aligned_box();
+
+//print_set();
+
+shell();
+
+//box();
+
+//clip(1, 5, 4.5);
 
 
