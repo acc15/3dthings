@@ -350,7 +350,7 @@ module fan_mount() {
 
 
 module assembly() {
-    color("red")
+    *color("red")
     translate([0,duct_outer_width/2,0])
     rotate([90,0,0]) // print mode
     duct();
@@ -385,23 +385,24 @@ duct();
 
 
 //translate([0,0,fan_out_offset[2]])
-*ductv2();
+ductv2();
 
 module ductv2() {
     
     duct_thickness = 2;
     
     //duct_nozzle_hole_distance = 15;
-    duct_nozzle_distance = 20;
+    duct_heater_distance = 5;
     duct_hole_width = 3;
-    duct_width = 12;
+    duct_width = 15;
     duct_length = 5;
     
-    
-    duct_angle = 35;
+    duct_angle = 45;
     duct_tolerance = 0.1;
     
-    duct_height = fan_out_outer_dim[1] + duct_tolerance*2+duct_thickness*2;
+    duct_inout_length = fan_out_outer_dim[0]+duct_tolerance*2+duct_thickness*2;
+    duct_height = fan_out_outer_dim[1]+duct_tolerance*2+duct_thickness*2;
+    duct_z = fan_offset[2]-duct_tolerance-duct_thickness;
     
     module duct_outer_shape() {
         polygon([[0,0], [duct_width, 0], [duct_width, duct_height], [sin(duct_angle)*duct_width, duct_height]]);
@@ -416,18 +417,49 @@ module ductv2() {
         }
     }
     
-    translate([0,fan_out_outer_dim[0]/2+duct_tolerance+duct_thickness,fan_offset[2]-duct_tolerance-duct_thickness])
+    duct_r_distance = (heater_dimensions[0] - heater_thread_offsets[0]) + duct_heater_distance;
+    duct_l_distance = heater_thread_offsets[0] + duct_heater_distance;
+    duct_add_distance = (heater_dimensions[1] - heater_thread_offsets[1]) - duct_inout_length/2;
+    duct_radius = duct_l_distance + duct_r_distance;
+    
+    
+    translate([duct_r_distance+duct_width,0,duct_z])
+    intersection() {
+        rotate([0,0,45])
+        translate([-duct_width*2,-duct_thickness/2,0])
+        cube([duct_width * 4, duct_thickness, duct_height]);
+        
+        translate([0,50,0])
+        rotate([90,0,0])
+        linear_extrude(100)
+        translate([-duct_width,0])
+        duct_outer_shape();
+    }
+        
+    
+    #union() {
+    
+    translate([0,duct_inout_length/2,duct_z])
     rotate([90,0,0])
-    linear_extrude(fan_out_outer_dim[0]+duct_tolerance*2+duct_thickness*2)
-    translate([duct_nozzle_distance,0])
+    linear_extrude(duct_inout_length + duct_add_distance)
+    translate([duct_r_distance,0])
     duct_shape();
     
-    
-    translate([0,-fan_out_outer_dim[0]/2-duct_tolerance-duct_thickness,fan_offset[2]-duct_tolerance-duct_thickness])
+    translate([-duct_radius/2+duct_r_distance,-duct_inout_length/2-duct_add_distance,duct_z])
     rotate_extrude(angle = -180)
-    translate([duct_nozzle_distance,0])
+    translate([duct_radius/2,0])
     duct_shape();
 
+
+    translate([0,duct_inout_length/2,duct_z])
+    rotate([90,0,0])
+    linear_extrude(duct_inout_length + duct_add_distance)
+    translate([-duct_l_distance,0])
+    mirror([-1,0])
+    duct_shape();
+        
+    }
+    
     
 }
 
