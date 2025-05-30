@@ -1,10 +1,15 @@
 $fa = 0.2;
 $fs = 0.2;
 
-board_dim = [117, 77];
+board_dim = [117, 77, 1.6];
 board_thickness = 1.6;
-board_mount_hole_offset = [5, 5];
-board_mount_hole_d = 3.33;
+board_hole_offsets = [
+    [5, 5],
+    [5, board_dim[1] - 5],
+    [board_dim[0] - 5, 5],
+    [board_dim[0] - 5, board_dim[1] - 5]
+];
+board_hole_d = 3.33;
 
 dc_dim = [9, 13.8, 10.75];
 dc_offset = [board_dim[0] - 24.5, board_dim[1] - dc_dim[1]];
@@ -44,18 +49,23 @@ screen_board_offset = [30,10,11.2];
 
 screen_dim = [61, 43, 2.5];
 screen_offset = [0.5, 6, screen_board_dim[2]];
+screen_pin_height = 1.2;
+
+trigged_led_dia = 4;
+trigged_led_height = 5.5;
+trigged_led_offset = [board_dim[0] - 29.5, 6.7];
+
+
+jst_pin_base_dim = [2.5,2.5,1.5];
+jst_pin_dim = [0.6,0.6,5.5];
 
 module board() {
     color("darkred")
-    linear_extrude(board_thickness)
-    translate(board_dim / 2)
+    linear_extrude(board_dim[2])
     difference() {
-        square(board_dim, center=true);    
-        for (i = [45:90:360]) {
-            translate([
-                cos(i) * (board_dim[0]/sqrt(2) - board_mount_hole_offset[0]),
-                sin(i) * (board_dim[1]/sqrt(2) - board_mount_hole_offset[1])
-            ]) circle(d=board_mount_hole_d);
+        square([board_dim[0], board_dim[1]]);
+        for (off = board_hole_offsets) {
+            translate(off) circle(d=board_hole_d);
         }
     }
 }
@@ -94,8 +104,11 @@ module slider(pos = 0) {
 }
 
 module button() {
+    color("black")
     translate([button_dim[0]/2,button_dim[1]/2,button_dim[2]])
     cylinder(d = button_d, h = button_h);
+    
+    color("lightgray")
     cube(button_dim);
 }
 
@@ -132,6 +145,11 @@ module screen() {
     cube(screen_dim);
 }
 
+module trigged_led() {
+    color("green")
+    cylinder(d = trigged_led_dia, h = trigged_led_height);
+}
+
 module board_assembly() {
     board();
 
@@ -157,6 +175,9 @@ module board_assembly() {
         
         translate(screen_board_offset)
         screen();
+        
+        translate(trigged_led_offset)
+        trigged_led();
 
     }
 }
@@ -170,3 +191,44 @@ board_assembly();
 *button();
 *bnc_connector();
 
+
+tolerance = 0.2;
+
+face_thickness = [0.48*3, 0.48*3, 0.3*5];
+face_offset_z = board_dim[2] + screen_board_offset[2] + screen_board_dim[2] + screen_pin_height;
+face_button_offset_z = board_dim[2] + button_dim[2] + button_h + tolerance;
+face_button_dia = 5;
+face_button_height = face_thickness[2] + 2;
+face_button_ext_dia = face_button_dia + 2;
+face_button_ext_height = face_offset_z - face_button_offset_z;
+
+translate([0,0,face_offset_z])
+linear_extrude(face_thickness[2])
+difference() {
+
+    translate([-tolerance-face_thickness[0], -tolerance-face_thickness[1]])
+    square([
+        board_dim[0] + tolerance * 2 + face_thickness[0] * 2,
+        board_dim[1] + tolerance * 2 + face_thickness[1] * 2
+    ]);
+
+    translate(screen_board_offset + screen_offset)
+    square([screen_dim[0], screen_dim[1]]);
+    
+    for (off = button_offsets) 
+        translate(off + button_dim/2)
+            circle(d = face_button_dia + tolerance*2);
+    
+}
+
+
+module face_button() {
+    translate([0,0,face_button_ext_height])
+    cylinder(d = face_button_dia, h = face_button_height);
+    
+    cylinder(d = face_button_ext_dia, h = face_button_ext_height);
+}
+
+for (off = button_offsets) 
+translate([off[0]+button_dim[0]/2,off[1]+button_dim[1]/2,face_button_offset_z])
+face_button();
