@@ -336,3 +336,42 @@ function bl_offset_poly(poly, off) = let(n = len(poly)) [ for (i = [0:n-1]) let(
     pi = bl_line_intersection([l1, l2]),
     pt = pi == undef ? l1[1] : pi
 ) pt ];
+
+module bl_four_holes(dim, offsets, center=false) {
+    for ($index = [0:3]) {
+        $offset = offsets[$index];
+        translate(center ? [0,0,0] : [dim[0]/2,dim[1]/2,0])
+        mirror([0,floor($index / 2) % 2,0])
+        mirror([$index % 2,0,0])
+        translate([$offset[0] - dim[0]/2, $offset[1] - dim[1]/2,0])
+        children();
+    }
+}
+
+module bl_ring(d, t) {
+    difference() {
+        circle(d = d + t*2);
+        circle(d = d);
+    }
+}
+
+module bl_hull_circle(l, d) {
+    hull() {
+        circle(d = d);
+        translate([l,0])
+        circle(d = d);
+    }
+}
+
+module bl_hull_ring(l, d, t) {
+    difference() {
+        bl_hull_circle(l, d+t*2);
+        bl_hull_circle(l, d);
+    }
+}
+
+module bl_half_circle_square(d) {
+    circle(d = d);
+    translate([-d/2,-d/2])
+        square([d, d/2]);
+}
