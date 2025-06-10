@@ -337,13 +337,13 @@ function bl_offset_poly(poly, off) = let(n = len(poly)) [ for (i = [0:n-1]) let(
     pt = pi == undef ? l1[1] : pi
 ) pt ];
 
-module bl_four_holes(dim, offsets, center=false) {
+module bl_four_holes(dim, offsets, center=false, move=true) {
     for ($index = [0:3]) {
         $offset = offsets[$index];
         translate(center ? [0,0,0] : [dim[0]/2,dim[1]/2,0])
         mirror([0,floor($index / 2) % 2,0])
         mirror([$index % 2,0,0])
-        translate([$offset[0] - dim[0]/2, $offset[1] - dim[1]/2,0])
+        translate([-dim[0]/2, -dim[1]/2, 0] + (move ? [$offset[0], $offset[1],0] : [0,0,0]))
         children();
     }
 }
@@ -355,7 +355,7 @@ module bl_ring(d, t) {
     }
 }
 
-module bl_hull_circle(l, d) {
+module bl_hull_circle(d, l) {
     hull() {
         circle(d = d);
         translate([l,0])
@@ -363,10 +363,10 @@ module bl_hull_circle(l, d) {
     }
 }
 
-module bl_hull_ring(l, d, t) {
+module bl_hull_ring(d, t, l) {
     difference() {
-        bl_hull_circle(l, d+t*2);
-        bl_hull_circle(l, d);
+        bl_hull_circle(d+t*2, l);
+        bl_hull_circle(d, l);
     }
 }
 

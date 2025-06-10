@@ -11,7 +11,7 @@ board_hole_offsets = [
     [5, 5], // left top
     [5, 5], // right top
 ];
-board_hole_d = 3.33;
+board_hole_dia = 3.33;
 
 dc_dim = [9, 13.8, 10.75];
 dc_offset = [board_dim[0] - 24.5, board_dim[1] - dc_dim[1]];
@@ -63,7 +63,7 @@ module board() {
     difference() {
         square([board_dim[0], board_dim[1]]);
         bl_four_holes(board_dim, board_hole_offsets) {
-            circle(d=board_hole_d);
+            circle(d=board_hole_dia);
         }
     }
 }
@@ -87,7 +87,6 @@ module bnc_connector() {
         cube([bnc_d, bnc_d/2, bnc_base]);
     }
 }
-
 
 module slider(pos = 0) {
     color("black")
@@ -156,6 +155,46 @@ module board_assembly() {
     }
 }
 
+module battery(dim, plus_pole=true) {
+    d = dim[0];
+    l = dim[1];
+    
+    if (plus_pole) {
+        translate([0,0,l])
+        color("red")
+        cylinder(d = 5.5, h = 1);
+    }
+    
+    translate([0,0,l*0.9])
+    color("red")
+    cylinder(d = d, h = l*0.1);
+    
+    translate([0,0,l*0.1])
+    cylinder(d = d, h = l*0.8);
+    
+    color("black")
+    cylinder(d = d, h = l*0.1);
+}
+
+cms4056t_dim = [24, 18, 1.2];
+cms4056t_typec_dim = [9,7,3.2];
+cms4056t_typec_offset = [2,13.15];
+
+module cms4056t_module() {
+    color("black")
+    cube(cms4056t_dim);
+    
+    translate(cms4056t_typec_offset)
+    translate([cms4056t_typec_dim[2]/2,0,cms4056t_typec_dim[2]/2 + cms4056t_dim[2]])
+    rotate([-90,0,0])
+    linear_extrude(cms4056t_typec_dim[1])
+    bl_hull_circle(cms4056t_typec_dim[2], cms4056t_typec_dim[0] - cms4056t_typec_dim[2]);
+}
+
+
+box_board_protector_dim = [
+    0,0,6
+];
 
 module box() {
 
@@ -167,6 +206,7 @@ module box() {
         board_dim[0] + box_extra_dim[0] + box_thickness[0]*2,
         board_dim[1] + box_extra_dim[1] + box_thickness[1]*2
     ];
+
     
     box_top_offset_z = screen_board_offset[2] + screen_board_dim[2] + screen_pin_height;
     
@@ -182,15 +222,19 @@ module box() {
 
     box_screen_tolerance = 1;
 
+    box_hole_inner_dia = board_hole_dia + tolerance*2;
+    box_hole_ext_dia = box_hole_inner_dia + box_thickness[0]*2;
+
     bolt_head_dia = 6;
     bolt_head_len = 3;
     
+
     module box_bolt_edge(off) {
         
         ext_d = bolt_head_dia + tolerance*2 + box_thickness[0]*2;
         ext_h = bolt_head_len + tolerance + box_thickness[2];
         
-        in_d = board_hole_d + tolerance*2 + box_thickness[0]*2;
+        in_d = box_hole_ext_dia;
         in_h = box_top_offset_z + box_thickness[2] - ext_h;
         
         difference() {
@@ -210,7 +254,7 @@ module box() {
             cylinder(d = bolt_head_dia + tolerance*2, h = bolt_head_len + tolerance*2);
             
             translate([0,0,-tolerance])
-            cylinder(d = board_hole_d + tolerance*2, h = in_h+ext_h+tolerance*2);
+            cylinder(d = box_hole_inner_dia, h = in_h+ext_h+tolerance*2);
         }
     }
 
@@ -266,7 +310,7 @@ module box() {
                 for (off = slider_offsets) {
                     translate([off[0]+slider_dim[0]/2-slider_handle_move, off[1] + slider_dim[1]/2, box_slider_offset_z+tolerance])
                     linear_extrude(box_slider_ext_height)
-                    bl_hull_ring((slider_handle_move - slider_handle_dim[0])*3, box_button_ext_dia+tolerance*2, box_thickness[0]);
+                    bl_hull_ring(box_button_ext_dia+tolerance*2, box_thickness[0], (slider_handle_move - slider_handle_dim[0])*3);
                 }
                 
                 bl_four_holes(board_dim, board_hole_offsets) {
@@ -309,6 +353,32 @@ module box() {
 
     
     }
+    
+    module box_board_protector() {
+        r = board_hole_dia/2 + tolerance + box_thickness[0];
+
+        bl_four_holes(board_dim, board_hole_offsets, move = false) {
+            hull() {
+                translate($offset)
+                circle(d = box_hole_ext_dia);
+                
+                translate([board_dim[0]/4,board_dim[1]/4])
+                circle(d = box_hole_ext_dia);
+            }
+        }
+        
+        /*translate([board_dim[0]/4,board_dim[1]/4])
+        square([board_dim[0]/2, board_dim[1]/2]);*/
+        
+        
+        
+    }
+    
+    module box_bottom() {
+        
+        
+    }
+    
 
     module box_button() {
         translate([0,0,box_button_ext_height])
@@ -341,8 +411,11 @@ module box() {
     }
 
 
-    translate([0,0,board_dim[2]])
+    *translate([0,0,board_dim[2]])
     box_top();
+
+    translate([0,0,-box_board_protector_dim[2]])
+    box_board_protector();
 
     *for (off = button_offsets) 
     translate([off[0]+button_dim[0]/2,off[1]+button_dim[1]/2,box_button_offset_z + tolerance/2])
@@ -351,21 +424,41 @@ module box() {
     *for (off = slider_offsets) 
     translate([off[0]+(slider_dim[0]-slider_handle_move+slider_handle_dim[0])/2+(slider_handle_move-slider_handle_dim[0])*0,off[1]+slider_dim[1]/2,box_slider_offset_z + tolerance/2])
     box_slider();
+    
+    battery_dim = [18, 65];
+    battery_count = 4;
+    
+    battery_block_dim = [
+        battery_dim[0]*battery_count + (box_thickness[0] + tolerance*2)*(battery_count-1),
+        battery_dim[1]
+    ];
+    
+    echo(board_dim, battery_block_dim);
+
+
+    *translate([(board_dim[0]-battery_block_dim[0])/2,(board_dim[1]-battery_block_dim[1])/2,-battery_dim[0]/2 - 2.5])
+    for (i = [0:battery_count-1]) {
+        translate([battery_dim[0]/2+i*(battery_dim[0]+box_thickness[0]+tolerance*2),0,0])
+        rotate([-90,0,0])
+        battery(battery_dim);
+    }
 
 }
 
+//rotate([70,0,0])
+union() {
+
 *screen();
-
-board_assembly();
-
-
 *button();
 *bnc_connector();
-
-
-a = 0;
-
-
-//for (i = [
-
+board_assembly();
 box();
+}
+
+translate([
+    cms4056t_typec_offset[0] + cms4056t_typec_dim[0] + dc_offset[0] - (cms4056t_typec_dim[0]-dc_dim[0])/2,
+    board_dim[1]-cms4056t_dim[1],
+    -box_board_protector_dim[2]
+])
+rotate([0,180,0])
+cms4056t_module();
