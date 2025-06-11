@@ -105,9 +105,9 @@ function bl_order(m_seq, i = 0) = i >= len(m_seq)-1 ? m_seq[i] : bl_order(m_seq,
 function bl_normalize(mt) = len(mt[0][0]) == undef ? mt : bl_order(mt);
 
 /** Converts 2d point (or array of points) to 3d points */
-function bl_to3d(pt, z = 0, y = 0, x = 0) = len(pt[0]) == undef 
-    ? bl_head_def(pt, [x,y,z], 3)
-    : [ for (p = pt) bl_to3d(p, z, y, x) ];
+function bl_nd(pt, default) = is_list(pt[0])
+    ? [ for (p = pt) bl_nd(p, default) ]
+    : [ for (i = [0:len(default)-1]) i < len(pt) ? pt[i] : default[i] ];
         
 /** Transforms point (or array of points) using supplied matrix (or set of matrix - see `bl_normalize`) */
 function bl_tr(v, m) = let(l = len(m), mn = bl_normalize(m)) 
@@ -337,13 +337,17 @@ function bl_offset_poly(poly, off) = let(n = len(poly)) [ for (i = [0:n-1]) let(
     pt = pi == undef ? l1[1] : pi
 ) pt ];
 
-module bl_four_holes(dim, offsets, center=false, move=true) {
+module bl_quad_mirror(dim, offsets, center=false, move=true) {
+    d = bl_nd(dim, [0,0,0]);
+    o = bl_nd(offsets, [0,0,0]);
+    
     for ($index = [0:3]) {
-        $offset = offsets[$index];
-        translate(center ? [0,0,0] : [dim[0]/2,dim[1]/2,0])
+        $offset = o[$index];
+        translate(center ? [0,0,0] : d/2)
+        mirror([0,0,floor($index / 4) % 2])
         mirror([0,floor($index / 2) % 2,0])
         mirror([$index % 2,0,0])
-        translate([-dim[0]/2, -dim[1]/2, 0] + (move ? [$offset[0], $offset[1],0] : [0,0,0]))
+        translate(-d/2 + (move ? $offset : [0,0,0]))
         children();
     }
 }
