@@ -220,7 +220,7 @@ battery_dim = [18, 65];
 battery_count = 5;
 battery_tolerance = 0.4;
 battery_block_dim = [
-    battery_dim[0]*battery_count + (box_thickness[0] + battery_tolerance*2)*(battery_count-1),
+    (box_thickness[0] + battery_dim[0] + battery_tolerance*2)*battery_count + battery_tolerance + box_thickness[0],
     battery_dim[1]+battery_tolerance*2,
     battery_dim[0]+battery_tolerance*2
 ];
@@ -497,8 +497,6 @@ module box_button() {
 }
 
 module box_slider() {
-    
-    
     difference() {
     
         translate([-(slider_handle_move-slider_handle_dim[0]),0])
@@ -519,24 +517,113 @@ module box_slider() {
 
 }
 
-translate([0,0,board_dim[2]+box_top_height-bolt_len])
+battery_contact_dim = [9.5, 9, 0.4];
+battery_contact_minus_len = 9;
+battery_contact_plus_len = 1.5;
+battery_contact_dia = 6;
+
+box_battery_holder_dim = [ 
+    box_thickness[0]*2 + battery_tolerance*2 + battery_dim[0],
+    box_thickness[1]*2 + battery_tolerance*2 + battery_dim[1] + battery_contact_plus_len + battery_contact_minus_len/2,
+    battery_dim[0]/2 + battery_tolerance + battery_contact_dim[1]/2
+];
+box_battery_holder_contact_wall = battery_contact_dim[2] + 0.48*2;
+
+module battery_contact(plus = true) {
+    rotate([90,0,180])
+    union() {
+        translate([-battery_contact_dim[0]/2,-battery_contact_dim[1]/2,0])
+        linear_extrude(battery_contact_dim[2]) {
+            bl_square(battery_contact_dim, [3,3,1,1]);
+            translate([(battery_contact_dim[0]-2.4)/2,0])
+            bl_square([2.4,15],[1.2,1.2,0,0]);
+        }    
+        cylinder(d = battery_contact_dia - tolerance*2, h = plus ? battery_contact_plus_len : battery_contact_minus_len);
+    }
+}
+
+module box_battery_holder() {
+        
+    module contact_diff() {
+        union() {
+            
+            translate([-battery_contact_dim[0]/2-tolerance, 0, -battery_contact_dim[1]/2-tolerance])
+            cube([battery_contact_dim[0] + tolerance*2, battery_contact_dim[2], (box_battery_holder_dim[2]+battery_contact_dim[1])/2 + tolerance*2]);
+            
+            translate([0, box_battery_holder_contact_wall + tolerance, 0])
+            rotate([90,-90,0])
+            hull() {
+                cylinder(d = battery_contact_dia, h = box_battery_holder_contact_wall + tolerance);
+                translate([box_battery_holder_dim[2]/2,0,0])
+                cylinder(d = battery_contact_dia, h = box_battery_holder_contact_wall + tolerance);
+            }
+        }
+    }
+    
+    translate([0,0,box_thickness[2]])
+    difference() {
+        linear_extrude(box_battery_holder_dim[2])
+        difference() {
+            square([box_battery_holder_dim[0], box_battery_holder_dim[1]]);
+            translate([box_thickness[0], box_thickness[1] + box_battery_holder_contact_wall])
+            square(box_battery_holder_dim - [box_thickness[0]*2,box_thickness[1]*2+box_battery_holder_contact_wall*2]);
+        }
+        translate([box_battery_holder_dim[0]/2,0,battery_tolerance + battery_dim[0]/2]) {
+            translate([0,box_thickness[1],0])
+            contact_diff();
+            
+            translate([0,box_battery_holder_dim[1]-box_thickness[1],0])
+            mirror([0,1,0])
+            contact_diff();
+        }
+    }
+    
+    cube([box_battery_holder_dim[0], box_battery_holder_dim[1], box_thickness[2]]);
+    
+    *translate([box_battery_holder_dim[0]/2, 0, box_thickness[2] + battery_tolerance + battery_dim[0]/2]) {
+        
+        color("blue")
+        translate([0, box_thickness[0] + tolerance, 0])
+        battery_contact(false);
+        
+        color("red")
+        translate([0, box_battery_holder_dim[1]-box_thickness[1]-tolerance, 0])
+        mirror([0,1,0])
+        battery_contact(true);
+        
+        translate([0, box_thickness[0] + battery_tolerance + battery_contact_minus_len/2, 0])
+        rotate([-90,0,0])
+        battery(battery_dim);
+
+    }
+
+}
+
+*battery_contact(false);
+
+box_battery_holder();
+
+
+
+
+*translate([0,0,board_dim[2]+box_top_height-bolt_len])
 color("blue")
 bl_quad_mirror(board_dim, board_hole_offsets) {
     bolt();
 }
 
 
-board_assembly();
+*board_assembly();
 
 //rotate([180,0,0])
 *translate([0,0,board_dim[2]])
 box_top();
 
-translate([0,0,-box_bottom_height+board_dim[2]])
+*translate([0,0,-box_bottom_height+board_dim[2]])
 box_bottom();
 
 
-translate([0,0,-box_board_protector_height-tolerance])
+*translate([0,0,-box_board_protector_height-tolerance])
 render()
 box_board_protector();
 
