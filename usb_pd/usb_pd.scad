@@ -24,6 +24,11 @@ pd_switch_offsets = [
     [pd_dim[0] - 8, 2.75],
     [pd_dim[0] - 11, 2.75]
 ];
+pd_power_hole = [1,2];
+pd_power_offsets = [
+    [pd_dim[0] - pd_power_hole[1]-0.6, 0.6],
+    [pd_dim[0] - pd_power_hole[1]-0.6, pd_dim[1] - pd_power_hole[0] - 0.1]
+];
 pd_offset = [
     dsn_vc288_screen_offset[0]-pd_dim[1],
     (dsn_vc288_dim[1] - pd_dim[0])/2,
@@ -78,6 +83,13 @@ module pd() {
         for (off = pd_switch_offsets)
             translate(off)
                 pd_switch();
+        for (off = pd_power_offsets) 
+            translate(off)
+                translate([0,0,-1])
+                linear_extrude(pd_dim[2]+2)
+                offset(0.1)
+                bl_hull_circle(pd_power_hole[0], pd_power_hole[1]);
+        
     }
     
     color("gray")
@@ -90,9 +102,21 @@ module pd() {
         for (off = pd_switch_offsets)
             translate(off)
                 pd_switch();
-
+        
+    color("gray")
+    for (off = pd_power_offsets) {
+        translate(off)
+        linear_extrude(pd_dim[2])
+        difference() {
+            offset(0.1)
+            bl_hull_circle(pd_power_hole[0], pd_power_hole[1]);
+            bl_hull_circle(pd_power_hole[0], pd_power_hole[1]);
+        }
+    }
     
 }
+
+
 
 module switch(position = 0) {
     for (i=[1:3])
