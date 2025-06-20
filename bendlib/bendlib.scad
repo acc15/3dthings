@@ -105,7 +105,7 @@ function bl_order(m_seq, i = 0) = i >= len(m_seq)-1 ? m_seq[i] : bl_order(m_seq,
 function bl_normalize(mt) = len(mt[0][0]) == undef ? mt : bl_order(mt);
 
 /** Converts 2d point (or array of points) to 3d points */
-function bl_nd(pt, default) = is_list(pt[0])
+function bl_nd(pt, defaults_or_dim_count) = let(default = is_list(defaults_or_dim_count) ? defaults_or_dim_count : bl_fill(0, defaults_or_dim_count)) is_list(pt[0])
     ? [ for (p = pt) bl_nd(p, default) ]
     : [ for (i = [0:len(default)-1]) i < len(pt) ? pt[i] : default[i] ];
         
@@ -359,10 +359,11 @@ module bl_ring(d, t) {
     }
 }
 
-module bl_hull_circle(d, l) {
+module bl_hull_circle(d, l, center = false) {
+    translate(center ? [0,0] : [d/2,d/2])
     hull() {
         circle(d = d);
-        translate([l,0])
+        translate([l-d,0])
         circle(d = d);
     }
 }
