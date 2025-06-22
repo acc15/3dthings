@@ -3,6 +3,8 @@ use <../bendlib/bendlib.scad>;
 $fa = 0.1;
 $fs = 0.1;
 
+tolerance = 0.2;
+
 dsn_vc288_dim = [41, 21, 1];
 dsn_vc288_mount_dim = [44, 5];
 dsn_vc288_screen_dim = [23, 20, 8];
@@ -29,16 +31,14 @@ pd_power_offsets = [
     [pd_dim[0] - pd_power_hole[1]-0.6, 0.6],
     [pd_dim[0] - pd_power_hole[1]-0.6, pd_dim[1] - pd_power_hole[0] - 0.1]
 ];
-pd_offset = [
-    dsn_vc288_screen_offset[0]-pd_dim[1],
-    (dsn_vc288_dim[1] - pd_dim[0])/2,
-    (dsn_vc288_dim[2]+dsn_vc288_screen_dim[2])-(pd_dim[2]+pd_typec_dim[2])
-];
+pd_offset = [-pd_typec_dim[2]-tolerance,0,0];
 
 switch_dim = [8.5, 4, 4];
 switch_handle_dim = [1.5, 1.5, 5];
 switch_move_width = 3.5;
 switch_pin_dim = [0.5, 0.3, 4.5];
+
+
 
 module dsn_vc288_shape() {
     translate([dsn_vc288_mount_dim[0]/2, dsn_vc288_dim[1]/2])
@@ -144,18 +144,142 @@ module switch(position = 0) {
     }
 }
 
-for (i = [0:len(pd_switch_offsets)-1]) {
-    
-    translate([pd_offset[0]+pd_switch_offsets[0][1]-pd_switch_dim[0]/2,pd_offset[1]-(switch_dim[1])/2 + (pd_dim[0]-pd_switch_offsets[0][0])+switch_dim[1]*i,pd_offset[2]-switch_dim[0]*3/4-switch_pin_dim[0]/2])
-    rotate([0,-90,0])
-    switch(0);
+xh254_pin_holder_dim = [2.54, 2.54, 2.4];
+xh254_pin_holder_cut_dim = [3,3];
+xh254_pin_dim = [0.6, 0.6, 11];
+xh254_pin_holder_offset = [0,0,3];
+xh254_pin_offset = (bl_nd(xh254_pin_holder_dim,2)-bl_nd(xh254_pin_dim, 2)) / 2;
 
+module xh254_pin() {
+    color("black")
+    translate(xh254_pin_holder_offset)
+    linear_extrude(xh254_pin_holder_dim[2])
+    intersection() {
+        square(bl_nd(xh254_pin_holder_dim,2));
+        translate(bl_nd(xh254_pin_holder_dim,2)/2)
+        rotate(45)
+        square(xh254_pin_holder_cut_dim, center=true);
+    }
+    
+    color("lightgray")
+    translate(xh254_pin_offset)
+    cube(xh254_pin_dim);
+}
+
+xh254_connector_dim = [2.5, 5.7, 6.9];
+xh254_connector_thickness = 0.75;
+xh254_connector_pin_dim = [0.62, 0.62, 8.95];
+xh254_connector_offset = [0,0,3];
+xh254_connector_pin_offset = [2.5, 2, 0];
+
+function xh254_connector_width(pin_count) = xh254_connector_dim[0] + xh254_connector_pin_offset[0]*pin_count;
+
+module xh254_connector(pin_count) {
+    width = xh254_connector_width(pin_count);
+    cut_width = 2;
+    cut_offset = 1.8;
+    cut_height = 3.5;
+    
+    color("white")
+    translate(xh254_connector_offset)
+    render()
+    difference() {
+        union() {
+            linear_extrude(xh254_connector_thickness)
+            square([width, xh254_connector_dim[1]]);
+        
+            translate([0,0,xh254_connector_thickness])
+            linear_extrude(xh254_connector_dim[2]-xh254_connector_thickness)
+            difference() {
+                square([width, xh254_connector_dim[1]]);
+                offset(-xh254_connector_thickness)
+                square([width, xh254_connector_dim[1]]);
+            }
+        }
+
+        translate([-1,xh254_connector_thickness,xh254_connector_dim[2]-3])
+        cube([width + 2, xh254_connector_thickness, 4]);
+        
+        
+        translate([cut_offset,-1,xh254_connector_dim[2]-cut_height])
+        cube([cut_width, xh254_connector_thickness + 2, cut_height+1]);
+        
+        translate([width-cut_offset-cut_width,-1,xh254_connector_dim[2]-cut_height])
+        cube([cut_width, xh254_connector_thickness + 2, cut_height+1]);
+    }
+    
+    color("gray")
+    for (i=[1:pin_count]) {
+        translate([xh254_connector_pin_offset[0]*i - xh254_connector_pin_dim[0]/2,xh254_connector_pin_offset[1],xh254_connector_pin_offset[2]])
+            cube(xh254_connector_pin_dim);
+    }
+    
+}
+
+dc_connector_dim = [9, 11, 14];
+dc_connector_outer_thickness = 3;
+dc_connector_inner_dia = 8;
+dc_connector_hole_dim = [6.3, 9.5];
+dc_connector_pin_dim = [1.5, dc_connector_dim[2]-1.5];
+dc_connector_contact_dim = [2, 4.7, 0.3];
+
+module dc_connector() {
+    color("#202020")
+    difference() {
+        union() {
+            cylinder(d = dc_connector_inner_dia, h = dc_connector_dim[2]);
+            translate([-dc_connector_dim[0]/2, -dc_connector_dim[1]+dc_connector_dim[0]/2,0]) {
+                translate([0, 0, dc_connector_dim[2] - dc_connector_outer_thickness])
+                cube([dc_connector_dim[0], dc_connector_dim[1], dc_connector_outer_thickness]);
+                cube([dc_connector_dim[0], dc_connector_dim[1] - dc_connector_dim[0]/2, dc_connector_dim[2]]);
+            }
+        }
+        translate([0,0,dc_connector_dim[2]-dc_connector_hole_dim[1]])
+        cylinder(d = dc_connector_hole_dim[0], h = dc_connector_hole_dim[1] + 1);
+    }
+    color("lightgray")
+    translate([0,0,1])
+    cylinder(d = dc_connector_pin_dim[0], h = dc_connector_pin_dim[1]-1);
+
+    module contact() {
+        linear_extrude(dc_connector_contact_dim[2])
+        translate([0,dc_connector_contact_dim[0]/2])
+        rotate(180)
+        bl_half_circle_square(dc_connector_contact_dim[0], dc_connector_contact_dim[1]);
+    }
+
+    color("lightgray")
+    translate([0,dc_connector_dim[0]/2-dc_connector_dim[1]-dc_connector_contact_dim[1], 0]) {
+        contact();
+        translate([0,0,6])
+        contact();
+        translate([dc_connector_dim[0]/2,0, 2 + dc_connector_contact_dim[0]/2])
+        rotate([0,-90,0])
+        contact();
+    }
 }
 
 
+for (i = [0:len(pd_switch_offsets)-1]) {
+    translate(pd_offset + [-tolerance,-switch_dim[1]/2 + pd_dim[0]-pd_switch_offsets[1][0] + (switch_dim[1]+tolerance)*(i-1),pd_dim[1]-switch_dim[0]])
+    rotate([0,-90,0])
+    switch(0);
+}
+
+echo([0,pd_dim[0] - dsn_vc288_dim[1],pd_dim[1] - dsn_vc288_dim[2] - dsn_vc288_screen_dim[2]]);
+
 translate(pd_offset)
-translate([0,pd_dim[0],0])
-rotate([0,0,-90])
+translate([0,pd_dim[0],pd_dim[1]])
+rotate([-90,0,-90])
 pd();
 
+translate([0,pd_dim[0] - dsn_vc288_dim[1],pd_dim[1] - dsn_vc288_dim[2] - dsn_vc288_screen_dim[2]])
 dsn_vc288();
+
+
+*bl_grid([5,2], xh254_pin_holder_dim) {
+    xh254_pin();
+}
+
+*dc_connector();
+*xh254_connector(2);

@@ -375,8 +375,22 @@ module bl_hull_ring(d, t, l) {
     }
 }
 
-module bl_half_circle_square(d) {
+module bl_half_circle_square(d, l=-1) {
+    sl = l < 0 ? d/2 : l - d/2;
     circle(d = d);
-    translate([-d/2,-d/2])
-        square([d, d/2]);
+    translate([-d/2,-sl])
+        square([d, sl]);
+}
+
+module bl_grid(counts, dim) {
+    c = bl_nd(counts,[1,1,1]);
+    d = bl_nd(dim,[0,0,0]);
+    for (z = [0:c[2]-1]) {
+        for (y = [0:c[1]-1]) {
+            for (x = [0:c[0]-1]) {
+                translate([x*dim[0], y*dim[1],z*dim[0]])
+                    children();
+            }
+        }
+    }
 }
