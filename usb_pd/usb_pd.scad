@@ -10,11 +10,11 @@ dsn_vc288_mount_dim = [44, 5];
 dsn_vc288_screen_dim = [23, 20, 8];
 dsn_vc288_screen_offset = [(dsn_vc288_mount_dim[0] - dsn_vc288_screen_dim[0])/2, dsn_vc288_dim[1] - dsn_vc288_screen_dim[1], dsn_vc288_dim[2]];
 dsn_vc288_holes = [
-    [1, [5.5, dsn_vc288_dim[1] - 3.5]],
-    [1, [5.5, dsn_vc288_dim[1] - 7.5]],
-    [0.7, [3, 4.5]],
-    [0.7, [5.5, 4.5]],
-    [0.7, [8, 4.5]]
+    ["-", 1, [5.5, dsn_vc288_dim[1] - 3.5]],
+    ["+", 1, [5.5, dsn_vc288_dim[1] - 7.5]],
+    ["+", 0.7, [3, 4.5]],
+    ["-", 0.7, [5.5, 4.5]],
+    ["v", 0.7, [8, 4.5]]
 ];
 
 pd_dim = [26.25, 11, 1.65];
@@ -56,8 +56,31 @@ module dsn_vc288() {
             dsn_vc288_shape();
             translate([(dsn_vc288_mount_dim[0] - dsn_vc288_dim[0])/2,0])
             for (hole = dsn_vc288_holes) {
-                translate(hole[1])
-                    circle(d = hole[0]);
+                translate(hole[2]) {
+                    circle(d = hole[1]*2);
+                }
+            }
+        }
+        
+        color("darkgray")
+        linear_extrude(dsn_vc288_dim[2])
+        translate([(dsn_vc288_mount_dim[0] - dsn_vc288_dim[0])/2,0])
+        for (hole = dsn_vc288_holes) {
+            translate(hole[2]) {
+                difference() {
+                    circle(d = hole[1]*2);
+                    circle(d = hole[1]);
+                }
+            }
+        }
+        
+        if ($preview) {
+            translate([1.4,1,-0.1])
+            linear_extrude(dsn_vc288_dim[2]+0.2)
+            for (hole = dsn_vc288_holes) {
+                translate(hole[2]) {
+                    text(hole[0], font="Nimbus Mono PS:style=Regular", size = 2, halign="center");
+                }
             }
         }
         translate(dsn_vc288_screen_offset)
@@ -260,26 +283,124 @@ module dc_connector() {
 }
 
 
-for (i = [0:len(pd_switch_offsets)-1]) {
-    translate(pd_offset + [-tolerance,-switch_dim[1]/2 + pd_dim[0]-pd_switch_offsets[1][0] + (switch_dim[1]+tolerance)*(i-1),pd_dim[1]-switch_dim[0]])
-    rotate([0,-90,0])
-    switch(0);
+dc_terminal_dia = 4.7;
+dc_terminal_height = 5.5;
+dc_terminal_bolt_width = 4;
+dc_terminal_bolt_hole_dia = 2.4;
+dc_terminal_hole_dia = 3.7;
+dc_terminal_length = 11.56;
+dc_terminal_bolt_dia = 2.2;
+dc_terminal_bolt_head_dia = 3.8;
+dc_terminal_bolt_length = 6.6;
+dc_terminal_bolt_head_length = 2;
+
+module dc_terminal(depth = 0) {
+
+    module bolt() {
+        cylinder(d = dc_terminal_bolt_dia, h = dc_terminal_bolt_length);
+        translate([0,0,dc_terminal_bolt_length-dc_terminal_bolt_head_length])
+        cylinder(d = dc_terminal_bolt_head_dia, h = dc_terminal_bolt_head_length);
+    }
+
+    color("gold")
+    translate([0,dc_terminal_hole_dia/2-(dc_terminal_bolt_length-dc_terminal_bolt_head_length-(dc_terminal_height - dc_terminal_dia/2 - dc_terminal_hole_dia/2))*depth,0]) {
+        translate([0,0,2.5])
+        rotate([-90,0,0])
+        bolt();
+        translate([0,0,dc_terminal_length-2.5])
+        rotate([-90,0,0])
+        bolt();
+    }
+    
+    color("gold")
+    render()
+    difference() {
+        linear_extrude(dc_terminal_length)
+        difference() {
+            hull() {
+                circle(d = dc_terminal_dia);
+                translate([-dc_terminal_bolt_width/2,0])
+                square([dc_terminal_bolt_width, dc_terminal_height - dc_terminal_dia/2]);
+            }
+            circle(d = dc_terminal_hole_dia);
+        }
+
+        translate([0,0,2.5])
+        rotate([-90,0,0])
+        cylinder(d = dc_terminal_bolt_hole_dia, h = dc_terminal_height);
+        
+        translate([0,0,dc_terminal_length-2.5])
+        rotate([-90,0,0])
+        cylinder(d = dc_terminal_bolt_hole_dia, h = dc_terminal_height);
+    }
 }
 
-echo([0,pd_dim[0] - dsn_vc288_dim[1],pd_dim[1] - dsn_vc288_dim[2] - dsn_vc288_screen_dim[2]]);
 
-translate(pd_offset)
-translate([0,pd_dim[0],pd_dim[1]])
+module pd_with_switches() {
+    pd();
+    for (i = [0:len(pd_switch_offsets)-1]) {
+        translate([-switch_dim[1]/2 + pd_switch_offsets[1][0] + (switch_dim[1]+tolerance)*(i-1), 0, 0])
+        rotate([180,0,90])
+        switch(0);
+    }
+}
+
+
+translate([switch_dim[2]+switch_pin_dim[2],pd_dim[0],pd_dim[1]])
 rotate([-90,0,-90])
-pd();
+pd_with_switches();
 
-translate([0,pd_dim[0] - dsn_vc288_dim[1],pd_dim[1] - dsn_vc288_dim[2] - dsn_vc288_screen_dim[2]])
+
+translate([0,(pd_dim[0]-dsn_vc288_dim[1])/2,pd_dim[1]+4])
 dsn_vc288();
 
 
-*bl_grid([5,2], xh254_pin_holder_dim) {
+
+translate([dsn_vc288_mount_dim[0]/2 + xh254_pin_holder_dim[0]*2.5, 2,xh254_pin_holder_offset[2]+xh254_pin_holder_dim[2]])
+rotate([0,180,0])
+bl_grid([5,2], xh254_pin_holder_dim) {
     xh254_pin();
 }
 
-*dc_connector();
-*xh254_connector(2);
+translate([dsn_vc288_mount_dim[0]-xh254_connector_dim[2]-xh254_connector_offset[2],xh254_connector_dim[1]+2,0])
+rotate([180,-90,0])
+xh254_connector(2);
+
+translate([dsn_vc288_mount_dim[0]-dc_connector_dim[2],pd_dim[0] + dc_connector_dim[1]-dc_connector_dim[0]/2 - dc_connector_dim[1],dc_connector_dim[0]/2])
+rotate([0,90,0])
+dc_connector();
+
+
+translate([dsn_vc288_mount_dim[0]/2 + dc_terminal_dia/2, pd_dim[0] - dc_terminal_length, dc_terminal_height-dc_terminal_dia/2+dc_terminal_bolt_head_length]) {
+
+    translate([-dc_terminal_dia-1,0,0])
+    rotate([-90,0,0])
+    dc_terminal(1);
+
+    translate([1,0,0])
+    rotate([-90,0,0])
+    dc_terminal(1);
+    
+}
+
+/*
+translate([dsn_vc288_mount_dim[0]+3,0,0]) {
+
+translate([dc_connector_dim[2]-dc_terminal_length,dc_terminal_dia/2+pd_dim[0]-dc_terminal_height-dc_terminal_bolt_head_length,dc_terminal_dia/2]) {
+    rotate([0,90,0])
+    dc_terminal(1);
+
+    translate([0,0,dc_terminal_dia + 1.5])
+    rotate([0,90,0])
+    dc_terminal(1);
+}
+
+translate([0,pd_dim[0]-dc_terminal_height-dc_terminal_bolt_head_length-dc_connector_dim[0]/2,dc_connector_dim[0]/2])
+rotate([0,90,0])
+dc_connector();
+
+translate([dc_connector_dim[2]-xh254_connector_dim[2]-xh254_connector_offset[2],0,xh254_connector_width(2)])
+rotate([0,90,0])
+xh254_connector(2);
+
+}*/
