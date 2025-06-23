@@ -62,27 +62,28 @@ module dsn_vc288() {
             }
         }
         
-        color("darkgray")
-        linear_extrude(dsn_vc288_dim[2])
-        translate([(dsn_vc288_mount_dim[0] - dsn_vc288_dim[0])/2,0])
-        for (hole = dsn_vc288_holes) {
-            translate(hole[2]) {
-                difference() {
-                    circle(d = hole[1]*2);
-                    circle(d = hole[1]);
+        translate([(dsn_vc288_mount_dim[0] - dsn_vc288_dim[0])/2,0,0]) {
+            color("darkgray")
+            linear_extrude(dsn_vc288_dim[2])
+            for (hole = dsn_vc288_holes) {
+                translate(hole[2]) {
+                    difference() {
+                        circle(d = hole[1]*2);
+                        circle(d = hole[1]);
+                    }
+                }
+            }
+            if ($preview) {
+                translate([0,0,-0.1])
+                linear_extrude(dsn_vc288_dim[2]+0.2)            
+                for (hole = dsn_vc288_holes) {
+                    translate([hole[2][0],hole[2][1]+hole[1]]) {
+                        text(hole[0], font="Nimbus Mono PS:style=Regular", size = 2, halign="center", valign="bottom");
+                    }
                 }
             }
         }
         
-        if ($preview) {
-            translate([1.4,1,-0.1])
-            linear_extrude(dsn_vc288_dim[2]+0.2)
-            for (hole = dsn_vc288_holes) {
-                translate(hole[2]) {
-                    text(hole[0], font="Nimbus Mono PS:style=Regular", size = 2, halign="center");
-                }
-            }
-        }
         translate(dsn_vc288_screen_offset)
         color("darkgray")
         cube(dsn_vc288_screen_dim);
@@ -355,14 +356,13 @@ translate([0,(pd_dim[0]-dsn_vc288_dim[1])/2,pd_dim[1]+4])
 dsn_vc288();
 
 
-
 translate([dsn_vc288_mount_dim[0]/2 + xh254_pin_holder_dim[0]*2.5, 2,xh254_pin_holder_offset[2]+xh254_pin_holder_dim[2]])
 rotate([0,180,0])
 bl_grid([5,2], xh254_pin_holder_dim) {
     xh254_pin();
 }
 
-translate([dsn_vc288_mount_dim[0]-xh254_connector_dim[2]-xh254_connector_offset[2],xh254_connector_dim[1]+2,0])
+translate([dsn_vc288_mount_dim[0]-xh254_connector_dim[2]-xh254_connector_offset[2],xh254_connector_dim[1],0])
 rotate([180,-90,0])
 xh254_connector(2);
 
@@ -371,17 +371,19 @@ rotate([0,90,0])
 dc_connector();
 
 
-translate([dsn_vc288_mount_dim[0]/2 + dc_terminal_dia/2, pd_dim[0] - dc_terminal_length, dc_terminal_height-dc_terminal_dia/2+dc_terminal_bolt_head_length]) {
+translate([dsn_vc288_mount_dim[0]/2 + dc_terminal_dia/2, pd_dim[0] - dc_terminal_length, dc_terminal_height-dc_terminal_dia/2+dc_terminal_bolt_head_length+0.4]) {
 
     translate([-dc_terminal_dia-1,0,0])
     rotate([-90,0,0])
-    dc_terminal(1);
+    dc_terminal(0.9);
 
     translate([1,0,0])
     rotate([-90,0,0])
-    dc_terminal(1);
+    dc_terminal(0.9);
     
 }
+
+echo((pd_dim[0] - dsn_vc288_dim[1])/2);
 
 /*
 translate([dsn_vc288_mount_dim[0]+3,0,0]) {
@@ -404,3 +406,7 @@ rotate([0,90,0])
 xh254_connector(2);
 
 }*/
+
+//text("v", font="Nimbus Mono PS:style=Regular", size = 2, halign="left", valign="center");
+
+
