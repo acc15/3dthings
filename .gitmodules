@@ -1,3 +1,6 @@
 [submodule "NopSCADlib"]
 	path = NopSCADlib
 	url = https://github.com/nophead/NopSCADlib.git
+[submodule "BOSL"]
+	path = BOSL
+	url = https://github.com/revarbat/BOSL.git

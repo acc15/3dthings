@@ -1,3 +1,21 @@
+/** Expands or shrinks value to required amount of dimensions. Can be used to convert:
+    
+    1. scalar to vector of dimension `nd` (v must be scalar, e.g. non-list)
+    2. vector to `nd` dimension - useful for converting 2d to 3d point, or vice-versa
+    3. points in vector `v` to `nd` dimensions - useful for polygon processing (to convert 3d points to 2d or vice versa)
+        
+    - `v` value to convert (scalar, list of scalars, or list of points - list of lists (in terms of openscad))
+    - `nd` can be a number of dimensions or list with default values for additional dimensions, it length specifies target count of dimensions
+    
+*/
+function bl_nd(v, nd) = let(
+    count = is_list(nd) ? len(nd) : nd
+) is_list(v) ? let(
+    default = is_list(nd) ? nd : bl_nd(0, count)
+) is_list(v[0])
+    ? [ for (p = v) bl_nd(p, default) ]
+    : [ for (i = [0 : count-1]) i < len(v) ? v[i] : default[i] ]
+: [ for (i = [0 : count-1]) v ];
 
 /** Computes factorial */
 function bl_fac(n) = n <= 1 ? 1 : n * bl_fac(n - 1);
@@ -10,8 +28,6 @@ function bl_sum(a, i = 0) = i >= len(a) ? 0 : a[i] + bl_sum(a, i + 1);
 
 /** Checks whether each element of v is zero or not (zero vector with zero norm) */
 function bl_zero(v, i = 0) = i >= len(v) ? true: v[i] == 0 && bl_zero(v, i + 1);
-
-function bl_fill(v, l) = [ for (i = [0:l-1]) v ];
 
 /** Computes squares vector norm */
 function bl_norm_sq(v) = bl_sum([ for (e = v) e * e ]);
@@ -104,11 +120,6 @@ function bl_order(m_seq, i = 0) = i >= len(m_seq)-1 ? m_seq[i] : bl_order(m_seq,
 /** If `mt` is matrix then return it, if `mt` is array of matricies then premultiplies all of them and returns result */
 function bl_normalize(mt) = len(mt[0][0]) == undef ? mt : bl_order(mt);
 
-/** Converts 2d point (or array of points) to 3d points */
-function bl_nd(pt, defaults_or_dim_count) = let(default = is_list(defaults_or_dim_count) ? defaults_or_dim_count : bl_fill(0, defaults_or_dim_count)) is_list(pt[0])
-    ? [ for (p = pt) bl_nd(p, default) ]
-    : [ for (i = [0:len(default)-1]) i < len(pt) ? pt[i] : default[i] ];
-        
 /** Transforms point (or array of points) using supplied matrix (or set of matrix - see `bl_normalize`) */
 function bl_tr(v, m) = let(l = len(m), mn = bl_normalize(m)) 
     len(v[0]) == undef
@@ -247,7 +258,7 @@ function bl_bezier_steps() = $fn > 0 ? $fn : 12;
 function bl_bezier_point(points, t, sum, i = 0) = let(n = len(points) - 1) 
     i > n ? sum : bl_bezier_point(points, t, bl_bezier_component(i, n, t, points[i]) + sum, i + 1);
 function bl_bezier(points, last = true) = len(points) <= 2 ? points :
-    let(segments = bl_bezier_steps()) [ for (i = [0 : last ? segments : segments - 1]) bl_bezier_point(points, i / segments, bl_fill(0, len(points[0]))) ];
+    let(segments = bl_bezier_steps()) [ for (i = [0 : last ? segments : segments - 1]) bl_bezier_point(points, i / segments, bl_nd(0, len(points[0]))) ];
     
 module bl_line_3(p1, p2, d = 1) {
     v = p2 - p1;

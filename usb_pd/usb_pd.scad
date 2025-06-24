@@ -351,10 +351,8 @@ translate([switch_dim[2]+switch_pin_dim[2],pd_dim[0],pd_dim[1]])
 rotate([-90,0,-90])
 pd_with_switches();
 
-
 translate([0,(pd_dim[0]-dsn_vc288_dim[1])/2,pd_dim[1]+4])
 dsn_vc288();
-
 
 translate([dsn_vc288_mount_dim[0]/2 + xh254_pin_holder_dim[0]*2.5, 2,xh254_pin_holder_offset[2]+xh254_pin_holder_dim[2]])
 rotate([0,180,0])
@@ -370,7 +368,6 @@ translate([dsn_vc288_mount_dim[0]-dc_connector_dim[2],pd_dim[0] + dc_connector_d
 rotate([0,90,0])
 dc_connector();
 
-
 translate([dsn_vc288_mount_dim[0]/2 + dc_terminal_dia/2, pd_dim[0] - dc_terminal_length, dc_terminal_height-dc_terminal_dia/2+dc_terminal_bolt_head_length+0.4]) {
 
     translate([-dc_terminal_dia-1,0,0])
@@ -385,28 +382,21 @@ translate([dsn_vc288_mount_dim[0]/2 + dc_terminal_dia/2, pd_dim[0] - dc_terminal
 
 echo((pd_dim[0] - dsn_vc288_dim[1])/2);
 
-/*
-translate([dsn_vc288_mount_dim[0]+3,0,0]) {
 
-translate([dc_connector_dim[2]-dc_terminal_length,dc_terminal_dia/2+pd_dim[0]-dc_terminal_height-dc_terminal_bolt_head_length,dc_terminal_dia/2]) {
-    rotate([0,90,0])
-    dc_terminal(1);
+box_hole_d = 3.4;
+box_nut_d = 5.5;
+box_nut_ext_d = box_nut_d * sin(60);
+box_thickness = [0.48*3, 0.48*3, 0.2*7];
 
-    translate([0,0,dc_terminal_dia + 1.5])
-    rotate([0,90,0])
-    dc_terminal(1);
+echo(bl_nd(box_hole_d,2));
+
+difference() {
+    
+    bl_square([box_thickness[0]*2+box_hole_d, box_thickness[1]*2+box_hole_d], [box_hole_d/2+box_thickness[2],0,0,0]);
+    translate(bl_nd(box_thickness,2) + bl_nd(box_hole_d/2,2))
+    circle(d = box_hole_d);
 }
 
-translate([0,pd_dim[0]-dc_terminal_height-dc_terminal_bolt_head_length-dc_connector_dim[0]/2,dc_connector_dim[0]/2])
-rotate([0,90,0])
-dc_connector();
-
-translate([dc_connector_dim[2]-xh254_connector_dim[2]-xh254_connector_offset[2],0,xh254_connector_width(2)])
-rotate([0,90,0])
-xh254_connector(2);
-
-}*/
-
-//text("v", font="Nimbus Mono PS:style=Regular", size = 2, halign="left", valign="center");
 
 
+//wiring([[50,0,-50], [50,50,-50], [0,50,-50], [0,0,-50], [0,0,0]], fillet=5, wires=2, wirediam = 2);
