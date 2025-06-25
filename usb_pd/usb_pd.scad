@@ -342,61 +342,139 @@ module pd_with_switches() {
     for (i = [0:len(pd_switch_offsets)-1]) {
         translate([-switch_dim[1]/2 + pd_switch_offsets[1][0] + (switch_dim[1]+tolerance)*(i-1), 0, 0])
         rotate([180,0,90])
-        switch(0);
+        switch(1);
     }
 }
 
 
-translate([switch_dim[2]+switch_pin_dim[2],pd_dim[0],pd_dim[1]])
+
+
+box_bolt_d = 3;
+box_bolt_hole_d = box_bolt_d + tolerance*2;
+box_nut_d = 5.5;
+box_nut_hole_d = box_nut_d / sin(60) + tolerance*2;
+box_nut_thickness = 2.5;
+box_thickness = [0.48*3, 0.48*3, 0.2*7];
+box_dim = [ dsn_vc288_mount_dim[0] + box_thickness[0]*2 + tolerance*2, pd_dim[0] + box_thickness[1]*2 + tolerance*2 ];
+
+box_bottom_height = pd_dim[1] + box_thickness[2] + tolerance*2;
+
+xh254_pin_counts = [5,2];
+
+xh254_pin_position = [
+    (box_dim[0] - xh254_pin_holder_dim[0]*xh254_pin_counts[0])/2, 
+    box_thickness[1] + tolerance + 2, 
+    box_thickness[2] + xh254_pin_holder_offset[2]+xh254_pin_holder_dim[2]
+];
+
+color("#406040")
+render()
+difference() {
+
+    union() {
+    
+        linear_extrude(box_thickness[2])
+        difference() {
+            square(box_dim);
+      
+            translate(xh254_pin_position - bl_2d(tolerance))
+            bl_grid(xh254_pin_counts, xh254_pin_holder_dim) {
+                translate(xh254_pin_offset) {
+                    square(xh254_pin_dim + bl_2d(tolerance)*2);
+                }
+            }  
+        }
+        
+        linear_extrude(box_bottom_height)
+        difference() {
+            square(box_dim);
+            translate(bl_2d(box_thickness))
+            square(box_dim - bl_2d(box_thickness)*2);
+        }
+        
+        cube([
+            box_thickness[0] + tolerance + switch_dim[2] + tolerance + box_thickness[0],
+            box_thickness[1] + tolerance + (pd_dim[0] - pd_switch_offsets[1][0]) + switch_dim[1]*1.5 + tolerance*2 + box_thickness[1],
+            box_bottom_height
+        ]);
+        
+    }
+   
+    translate([
+        0,
+        box_thickness[1] + tolerance + (pd_dim[0] - pd_switch_offsets[1][0]) - switch_dim[1]*1.5 - tolerance*2,
+        box_thickness[2] + pd_dim[1] - switch_dim[0]
+    ]) {
+        
+        translate([box_thickness[0],0,0]) {
+            
+            cube([
+                tolerance + switch_dim[2] + tolerance,
+                switch_dim[1]*3 + tolerance*4,
+                box_bottom_height
+            ]);
+            
+            translate([0,1,1])
+            cube([
+                tolerance*2 + switch_dim[2] + switch_pin_dim[2],
+                switch_dim[1]*3 + tolerance*4 - 2,
+                box_bottom_height
+            ]); 
+        }
+        
+        for (i=[0:2]) {
+            translate([-tolerance,
+                (switch_dim[1] - switch_handle_dim[1])/2 + i*(switch_dim[1]+tolerance), 
+                tolerance + (switch_dim[0] - switch_move_width)/2 - tolerance])
+            cube([
+                box_thickness[0]+tolerance*2,
+                switch_handle_dim[1]+tolerance*2,
+                box_bottom_height
+            ]);
+        }
+        
+    }
+}
+
+
+
+translate([
+    box_thickness[0]+tolerance+switch_dim[2]+switch_pin_dim[2],
+    box_thickness[1]+tolerance,
+    box_thickness[2]+tolerance
+])
+translate([0,pd_dim[0],pd_dim[1]])
 rotate([-90,0,-90])
 pd_with_switches();
 
-translate([0,(pd_dim[0]-dsn_vc288_dim[1])/2,pd_dim[1]+4])
-dsn_vc288();
-
-translate([dsn_vc288_mount_dim[0]/2 + xh254_pin_holder_dim[0]*2.5, 2,xh254_pin_holder_offset[2]+xh254_pin_holder_dim[2]])
+*translate(xh254_pin_position)
+translate([xh254_pin_holder_dim[0]*xh254_pin_counts[0],0,0])
 rotate([0,180,0])
-bl_grid([5,2], xh254_pin_holder_dim) {
+bl_grid(xh254_pin_counts, xh254_pin_holder_dim) {
     xh254_pin();
 }
 
-translate([dsn_vc288_mount_dim[0]-xh254_connector_dim[2]-xh254_connector_offset[2],xh254_connector_dim[1],0])
-rotate([180,-90,0])
-xh254_connector(2);
-
-translate([dsn_vc288_mount_dim[0]-dc_connector_dim[2],pd_dim[0] + dc_connector_dim[1]-dc_connector_dim[0]/2 - dc_connector_dim[1],dc_connector_dim[0]/2])
+*translate([box_dim[0]-box_thickness[0]-tolerance-dc_connector_dim[2],box_dim[1] - box_thickness[1] - tolerance - dc_connector_dim[1], box_bottom_height-dc_connector_dim[0]])
+translate([0,dc_connector_dim[1]-dc_connector_dim[0]/2,dc_connector_dim[0]/2]) 
 rotate([0,90,0])
 dc_connector();
 
-translate([dsn_vc288_mount_dim[0]/2 + dc_terminal_dia/2, pd_dim[0] - dc_terminal_length, dc_terminal_height-dc_terminal_dia/2+dc_terminal_bolt_head_length+0.4]) {
+*translate([box_dim[0]-box_thickness[0]-tolerance-xh254_connector_offset[2],box_thickness[1]+tolerance+2,box_thickness[2] + tolerance])
+translate([-xh254_connector_dim[2],xh254_connector_dim[1],0])
+rotate([180,-90,0])
+xh254_connector(2);  
 
-    translate([-dc_terminal_dia-1,0,0])
-    rotate([-90,0,0])
-    dc_terminal(0.9);
-
-    translate([1,0,0])
-    rotate([-90,0,0])
-    dc_terminal(0.9);
+*translate([box_dim[0]/2 - dc_terminal_dia - 1, box_dim[1] - box_thickness[1] - tolerance - dc_terminal_length, box_thickness[2] + tolerance])
+translate([dc_terminal_dia+0.5,0,dc_terminal_height-dc_terminal_dia/2+dc_terminal_bolt_head_length])
+rotate([-90,0,0])
+union() {
+    
+    translate([dc_terminal_dia/2+1,0,0])
+    dc_terminal(1);
+    translate([-dc_terminal_dia/2-1,0,0])
+    dc_terminal(1);
     
 }
 
-echo((pd_dim[0] - dsn_vc288_dim[1])/2);
-
-
-box_hole_d = 3.4;
-box_nut_d = 5.5;
-box_nut_ext_d = box_nut_d * sin(60);
-box_thickness = [0.48*3, 0.48*3, 0.2*7];
-
-echo(bl_nd(box_hole_d,2));
-
-difference() {
-    
-    bl_square([box_thickness[0]*2+box_hole_d, box_thickness[1]*2+box_hole_d], [box_hole_d/2+box_thickness[2],0,0,0]);
-    translate(bl_nd(box_thickness,2) + bl_nd(box_hole_d/2,2))
-    circle(d = box_hole_d);
-}
-
-
-
-//wiring([[50,0,-50], [50,50,-50], [0,50,-50], [0,0,-50], [0,0,0]], fillet=5, wires=2, wirediam = 2);
+*translate([box_thickness[0] + tolerance, (box_dim[1] - dsn_vc288_dim[1])/2,box_bottom_height+6])
+dsn_vc288();

@@ -17,6 +17,9 @@ function bl_nd(v, nd) = let(
     : [ for (i = [0 : count-1]) i < len(v) ? v[i] : default[i] ]
 : [ for (i = [0 : count-1]) v ];
 
+function bl_2d(v) = bl_nd(v,2);
+function bl_3d(v) = bl_nd(v,3);
+
 /** Computes factorial */
 function bl_fac(n) = n <= 1 ? 1 : n * bl_fac(n - 1);
 
@@ -349,16 +352,16 @@ function bl_offset_poly(poly, off) = let(n = len(poly)) [ for (i = [0:n-1]) let(
 ) pt ];
 
 module bl_quad_mirror(dim, offsets, center=false, move=true) {
-    d = bl_nd(dim, [0,0,0]);
-    o = bl_nd(offsets, [0,0,0]);
+    d = bl_3d(dim);
+    o = is_list(offsets) ? bl_3d(offsets) : [ for (i=[0:offsets-1]) bl_3d(0) ];
     
-    for ($index = [0:3]) {
+    for ($index = [0:len(o)-1]) {
         $offset = o[$index];
         translate(center ? [0,0,0] : d/2)
         mirror([0,0,floor($index / 4) % 2])
         mirror([0,floor($index / 2) % 2,0])
         mirror([$index % 2,0,0])
-        translate(-d/2 + (move ? $offset : [0,0,0]))
+        translate(-d/2 + (move ? $offset : bl_3d(0)))
         children();
     }
 }
