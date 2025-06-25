@@ -392,9 +392,18 @@ difference() {
             square(box_dim - bl_2d(box_thickness)*2);
         }
         
+        switch_box_length = box_thickness[1] + tolerance + (pd_dim[0] - pd_switch_offsets[1][0]) + switch_dim[1]*1.5 + tolerance*2 + box_thickness[1];
+        
         cube([
             box_thickness[0] + tolerance + switch_dim[2] + tolerance + box_thickness[0],
-            box_thickness[1] + tolerance + (pd_dim[0] - pd_switch_offsets[1][0]) + switch_dim[1]*1.5 + tolerance*2 + box_thickness[1],
+            switch_box_length,
+            box_bottom_height
+        ]);
+        
+        translate([0,switch_box_length-box_thickness[1]-1,0])
+        cube([
+            box_thickness[0] + switch_dim[2] + switch_pin_dim[2],
+            box_dim[1] - switch_box_length + box_thickness[1] + 1,
             box_bottom_height
         ]);
         
@@ -434,6 +443,19 @@ difference() {
         }
         
     }
+    
+    translate([
+        pd_typec_dim[2]/2 + box_thickness[0]+tolerance+switch_dim[2]+switch_pin_dim[2]+pd_dim[2],
+        box_dim[1] - box_thickness[1] - tolerance,
+        pd_typec_dim[2]/2+box_thickness[2]+tolerance+pd_typec_offset[1]
+    ]) {
+        
+        rotate([-90,0,0])
+        linear_extrude(box_thickness[1] + tolerance*2)
+        bl_half_circle_square(pd_typec_dim[2]+tolerance*2, box_bottom_height);
+    }
+    
+    
 }
 
 
