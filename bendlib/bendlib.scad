@@ -391,7 +391,11 @@ module bl_hull_ring(d, t, l) {
 
 module bl_half_circle_square(d, l=-1) {
     sl = l < 0 ? d/2 : l - d/2;
-    circle(d = d);
+    intersection() {
+        circle(d = d);
+        translate([-d/2,0])
+        square([d, d/2]);
+    }
     translate([-d/2,-sl])
         square([d, sl]);
 }
