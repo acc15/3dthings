@@ -293,6 +293,15 @@ dc_terminal_bolt_dia = 2.2;
 dc_terminal_bolt_head_dia = 3.8;
 dc_terminal_bolt_length = 6.6;
 dc_terminal_bolt_head_length = 2;
+dc_terminal_bolt_offset = 2.5;
+
+module dc_terminal_shape() {
+    hull() {
+        circle(d = dc_terminal_dia);
+        translate([-dc_terminal_bolt_width/2,0])
+        square([dc_terminal_bolt_width, dc_terminal_height - dc_terminal_dia/2]);
+    }
+}
 
 module dc_terminal(depth = 0) {
 
@@ -317,19 +326,15 @@ module dc_terminal(depth = 0) {
     difference() {
         linear_extrude(dc_terminal_length)
         difference() {
-            hull() {
-                circle(d = dc_terminal_dia);
-                translate([-dc_terminal_bolt_width/2,0])
-                square([dc_terminal_bolt_width, dc_terminal_height - dc_terminal_dia/2]);
-            }
+            dc_terminal_shape();
             circle(d = dc_terminal_hole_dia);
         }
 
-        translate([0,0,2.5])
+        translate([0,0,dc_terminal_bolt_offset])
         rotate([-90,0,0])
         cylinder(d = dc_terminal_bolt_hole_dia, h = dc_terminal_height);
         
-        translate([0,0,dc_terminal_length-2.5])
+        translate([0,0,dc_terminal_length-dc_terminal_bolt_offset])
         rotate([-90,0,0])
         cylinder(d = dc_terminal_bolt_hole_dia, h = dc_terminal_height);
     }
@@ -367,13 +372,27 @@ box_dim = box_inner_dim + bl_2d(box_offset)*2;
 box_bottom_inner_height = pd_dim[1];
 box_bottom_height = box_thickness[2] + tolerance + box_bottom_inner_height + tolerance + box_thickness[2];
 
-xh254_pin_counts = [5,2];
+box_pin_counts = [5,2];
 
-xh254_pin_position = [
-    (box_inner_dim[0] - xh254_pin_holder_dim[0]*xh254_pin_counts[0])/2, 
+box_pin_offset = [
+    (box_inner_dim[0] - xh254_pin_holder_dim[0]*box_pin_counts[0])/2, 
     2, 
     xh254_pin_holder_offset[2]+xh254_pin_holder_dim[2]-tolerance-box_thickness[2]
 ];
+
+box_dc_connector_offset = [
+    box_inner_dim[0] - dc_connector_dim[2],
+    box_inner_dim[1] - dc_connector_dim[1], 
+    box_bottom_inner_height-dc_connector_dim[0]
+];
+
+// TODO fix offset
+box_dc_terminal_offset = [
+    box_inner_dim[0]/2 - dc_terminal_dia, 
+    box_inner_dim[1] - dc_terminal_length, 
+    box_bottom_inner_height - dc_terminal_height
+];
+box_dc_terminal_distance = 2;
 
 
 module box_mount_ear_shape() {
@@ -407,8 +426,8 @@ module box_bottom() {
             difference() {
                 box_shape();
                 translate(box_offset) {
-                    translate(xh254_pin_position - bl_2d(tolerance))
-                    square([xh254_pin_holder_dim[0]*xh254_pin_counts[0], xh254_pin_holder_dim[1]*xh254_pin_counts[1]]+bl_2d(tolerance)*2);
+                    translate(box_pin_offset - bl_2d(tolerance))
+                    square([xh254_pin_holder_dim[0]*box_pin_counts[0], xh254_pin_holder_dim[1]*box_pin_counts[1]]+bl_2d(tolerance)*2);
                 }
             }
             
@@ -434,6 +453,18 @@ module box_bottom() {
                 box_dim[1] - switch_box_length,
                 switch_box_height
             ]);
+            
+            pd_end_offset = switch_body_dim[2] + switch_pin_dim[2] + pd_dim[2] + pd_typec_dim[2] + tolerance;
+            
+            translate(box_offset) {
+                translate([
+                    pd_end_offset,
+                    box_inner_dim[1] - dc_terminal_length,
+                    -box_offset[2]
+                ])
+                cube([box_inner_dim[0] - pd_end_offset + box_offset[0],dc_terminal_length + box_thickness[1] + tolerance,box_bottom_inner_height + box_offset[2]]);
+                
+            }
             
         }
              
@@ -464,7 +495,7 @@ module box_bottom() {
                 cube([
                     box_thickness[0],
                     switch_handle_dim[1],
-                    switch_move_width
+                    /*switch_move_width*/ box_bottom_inner_height
                 ] + bl_3d(tolerance)*2);
             }
             
@@ -493,14 +524,14 @@ translate(box_offset) {
     
     pd_with_switches();
 
-    translate(xh254_pin_position)
-    translate([xh254_pin_holder_dim[0]*xh254_pin_counts[0],0,0])
+    translate(box_pin_offset)
+    translate([xh254_pin_holder_dim[0]*box_pin_counts[0],0,0])
     rotate([0,180,0])
-    bl_grid(xh254_pin_counts, xh254_pin_holder_dim) {
+    bl_grid(box_pin_counts, xh254_pin_holder_dim) {
         xh254_pin();
     }
 
-    translate([box_inner_dim[0]-dc_connector_dim[2],box_inner_dim[1] - dc_connector_dim[1], box_bottom_inner_height-dc_connector_dim[0]])
+    translate(box_dc_connector_offset)
     translate([0,dc_connector_dim[1]-dc_connector_dim[0]/2,dc_connector_dim[0]/2]) 
     rotate([0,90,0])
     dc_connector();
@@ -510,14 +541,14 @@ translate(box_offset) {
     rotate([180,-90,0])
     xh254_connector(2);  
 
-    translate([box_inner_dim[0]/2 - dc_terminal_dia - 1, box_inner_dim[1] - dc_terminal_length, box_bottom_inner_height - dc_terminal_height])
-    translate([dc_terminal_dia+0.5,0,dc_terminal_height-dc_terminal_dia/2])
+    translate(box_dc_terminal_offset)
+    translate([0,0,dc_terminal_height-dc_terminal_dia/2])
     rotate([-90,0,0])
     union() {
         
-        translate([dc_terminal_dia/2+1,0,0])
+        translate([dc_terminal_dia/2,0,0])
         dc_terminal(1);
-        translate([-dc_terminal_dia/2-1,0,0])
+        translate([dc_terminal_dia*1.5 + box_dc_terminal_distance,0,0])
         dc_terminal(1);
         
     }
@@ -527,4 +558,29 @@ translate(box_offset) {
 
 }
 
-echo(box_nut_hole_d + box_thickness[0]*2);
+// TODO fix offset
+module dc_terminal_diff() {
+
+    linear_extrude(dc_terminal_length + tolerance*2)
+    offset(tolerance)
+    dc_terminal_shape();
+
+    translate([0,0,dc_terminal_bolt_offset])
+    rotate([-90,0,0])
+    cylinder(d = dc_terminal_bolt_head_dia + tolerance*2, h = box_dc_terminal_offset[2] + (dc_terminal_height - dc_terminal_dia/2)); 
+
+    translate([0,0,dc_terminal_length - dc_terminal_bolt_offset])
+    rotate([-90,0,0])
+    cylinder(d = dc_terminal_bolt_head_dia + tolerance*2, h = box_dc_terminal_offset[2] + (dc_terminal_height - dc_terminal_dia/2) + box_thickness[2] + tolerance*2); 
+    
+}
+
+translate(box_dc_terminal_offset)
+rotate([-90,0,0])
+union() {
+    translate([dc_terminal_dia/2,0,0])
+    dc_terminal_diff();
+    translate([dc_terminal_dia*1.5 + box_dc_terminal_distance,0,0])
+    dc_terminal_diff();
+}
+
