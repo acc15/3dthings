@@ -282,7 +282,6 @@ module dc_connector() {
     }
 }
 
-
 dc_terminal_dia = 4.7;
 dc_terminal_height = 5.5;
 dc_terminal_bolt_width = 4;
@@ -290,18 +289,10 @@ dc_terminal_bolt_hole_dia = 2.4;
 dc_terminal_hole_dia = 3.7;
 dc_terminal_length = 11.56;
 dc_terminal_bolt_dia = 2.2;
-dc_terminal_bolt_head_dia = 3.8;
+dc_terminal_bolt_head_dia = 3.9;
 dc_terminal_bolt_length = 6.6;
 dc_terminal_bolt_head_length = 2;
 dc_terminal_bolt_offset = 2.5;
-
-module dc_terminal_shape() {
-    hull() {
-        circle(d = dc_terminal_dia);
-        translate([-dc_terminal_bolt_width/2,0])
-        square([dc_terminal_bolt_width, dc_terminal_height - dc_terminal_dia/2]);
-    }
-}
 
 module dc_terminal(depth = 0) {
 
@@ -326,7 +317,11 @@ module dc_terminal(depth = 0) {
     difference() {
         linear_extrude(dc_terminal_length)
         difference() {
-            dc_terminal_shape();
+            hull() {
+                circle(d = dc_terminal_dia);
+                translate([-dc_terminal_bolt_width/2,0])
+                square([dc_terminal_bolt_width, dc_terminal_height - dc_terminal_dia/2]);
+            }
             circle(d = dc_terminal_hole_dia);
         }
 
@@ -341,6 +336,30 @@ module dc_terminal(depth = 0) {
 }
 
 
+module dc_terminal_diff() {
+    translate([0,0,-box_offset[1]])
+    linear_extrude(dc_terminal_length + box_offset[1] + tolerance*2)
+    offset(delta = tolerance)
+    hull() {
+        
+        translate([-dc_terminal_dia/2, -dc_terminal_dia/2])
+        square([dc_terminal_dia, dc_terminal_dia/2]);
+        
+        translate([-dc_terminal_bolt_width/2,0])
+        square([dc_terminal_bolt_width, dc_terminal_height - dc_terminal_dia/2]);
+    }
+
+    translate([0,0,dc_terminal_bolt_offset])
+    rotate([-90,0,0])
+    cylinder(d = dc_terminal_bolt_head_dia + tolerance*2, h = box_dc_terminal_offset[2] + (dc_terminal_height - dc_terminal_dia/2) + tolerance); 
+
+    translate([0,0,dc_terminal_length - dc_terminal_bolt_offset])
+    rotate([-90,0,0])
+    cylinder(d = dc_terminal_bolt_head_dia + tolerance*2, h = box_dc_terminal_offset[2] + (dc_terminal_height - dc_terminal_dia/2) + box_thickness[2] + tolerance*2); 
+    
+    cylinder(d = dc_terminal_hole_dia + tolerance*2, h = dc_terminal_length + box_thickness[1] + tolerance*3);
+}
+
 module pd_with_switches(pos = 0) {
     translate([switch_body_dim[2]+switch_pin_dim[2],pd_dim[0],pd_dim[1]])
     rotate([-90,0,-90]) {
@@ -354,9 +373,9 @@ module pd_with_switches(pos = 0) {
 }
 
 
-box_bolt_d = 2;
-box_nut_d = 4;
-box_bolt_head_d = 4;
+box_bolt_d = 3;
+box_nut_d = 5.5;
+box_bolt_head_d = box_nut_d;
 
 box_bolt_hole_d = box_bolt_d + tolerance*2;
 box_bolt_head_hole_d = box_bolt_head_d + tolerance*2;
@@ -386,13 +405,46 @@ box_dc_connector_offset = [
     box_bottom_inner_height-dc_connector_dim[0]
 ];
 
-// TODO fix offset
+
+box_dc_terminal_distance = 2;
 box_dc_terminal_offset = [
-    box_inner_dim[0]/2 - dc_terminal_dia, 
+    (box_inner_dim[0] - (dc_terminal_dia*2 + box_dc_terminal_distance))/2, 
     box_inner_dim[1] - dc_terminal_length, 
     box_bottom_inner_height - dc_terminal_height
 ];
-box_dc_terminal_distance = 2;
+
+box_xh254_offset = [box_inner_dim[0]-xh254_connector_dim[2], 2, 0];
+
+module dc_connector_diff() {
+
+    translate([-tolerance, -(dc_connector_dim[1]-dc_connector_dim[0] / 2 + tolerance + box_offset[1]), -dc_connector_dim[0]/2-tolerance])
+    cube([dc_connector_dim[2]/2 + tolerance, dc_connector_dim[1]-dc_connector_dim[0] / 2 + tolerance + box_offset[1], dc_connector_dim[0] + tolerance*2]);
+    
+    translate([-tolerance+dc_connector_dim[2]/2, -(dc_connector_dim[1]-dc_connector_dim[0] / 2 + tolerance), -dc_connector_dim[0]/2-tolerance])
+    cube([dc_connector_dim[2]/2 + tolerance*2, dc_connector_dim[1]-dc_connector_dim[0] / 2 + tolerance, dc_connector_dim[0] + tolerance*2]);
+    
+    translate([-tolerance, -tolerance, 0])
+    cube([dc_connector_dim[2] + tolerance*2, dc_connector_dim[0] / 2 + tolerance*2, dc_connector_dim[0]/2+tolerance]);
+    
+    translate([dc_connector_dim[2] - dc_connector_outer_thickness - tolerance, -tolerance, -dc_connector_dim[0]/2-tolerance])
+    cube([dc_connector_outer_thickness + tolerance * 2, dc_connector_dim[0]/2+tolerance*2, dc_connector_dim[0] + tolerance*2]);
+    
+    translate([-tolerance,0,0])
+    rotate([0,90,0])
+    cylinder(d = dc_connector_inner_dia + tolerance*2, h = dc_connector_dim[2] + tolerance*2);
+    
+    translate([-tolerance,0,0])
+    rotate([0,90,0])
+    cylinder(d = dc_connector_hole_dim[0] + tolerance*2, h = dc_connector_dim[2] + tolerance*2 + box_offset[0] + tolerance);
+    
+}
+
+
+/*rotate([0,90,0])
+dc_connector();*/
+//dc_connector_diff();
+
+
 
 
 module box_mount_ear_shape() {
@@ -424,10 +476,10 @@ module box_bottom() {
         
             linear_extrude(box_thickness[2])
             difference() {
-                box_shape();
+                square(box_dim);
                 translate(box_offset) {
-                    translate(box_pin_offset - bl_2d(tolerance))
-                    square([xh254_pin_holder_dim[0]*box_pin_counts[0], xh254_pin_holder_dim[1]*box_pin_counts[1]]+bl_2d(tolerance)*2);
+                    translate([box_pin_offset[0] - tolerance/2, box_pin_offset[1] - tolerance/2])
+                    square([xh254_pin_holder_dim[0]*box_pin_counts[0]+tolerance, xh254_pin_holder_dim[1]*box_pin_counts[1]+tolerance]);
                 }
             }
             
@@ -456,18 +508,23 @@ module box_bottom() {
             
             pd_end_offset = switch_body_dim[2] + switch_pin_dim[2] + pd_dim[2] + pd_typec_dim[2] + tolerance;
             
-            translate(box_offset) {
-                translate([
-                    pd_end_offset,
-                    box_inner_dim[1] - dc_terminal_length,
-                    -box_offset[2]
-                ])
-                cube([box_inner_dim[0] - pd_end_offset + box_offset[0],dc_terminal_length + box_thickness[1] + tolerance,box_bottom_inner_height + box_offset[2]]);
-                
-            }
+
+            translate([
+                box_offset[0] + pd_end_offset,
+                box_dc_connector_offset[1],
+                0
+            ])
+            cube([box_inner_dim[0] - pd_end_offset + box_offset[0], dc_connector_dim[1] + box_offset[1]*2, box_offset[2] + box_bottom_inner_height]);
             
+            translate([box_offset[0] + box_xh254_offset[0],0,0])
+            cube([
+                xh254_connector_dim[2] + box_offset[0], 
+                box_offset[1] + box_xh254_offset[1] + xh254_connector_dim[1] + box_offset[1], 
+                box_offset[2] + xh254_connector_width(2)
+            ]);
         }
-             
+        
+        
         
         bl_quad_mirror(box_dim, 4)
         translate([box_nut_hole_d/2+box_thickness[0],-box_nut_hole_d/2,-1])
@@ -495,7 +552,7 @@ module box_bottom() {
                 cube([
                     box_thickness[0],
                     switch_handle_dim[1],
-                    /*switch_move_width*/ box_bottom_inner_height
+                    switch_move_width
                 ] + bl_3d(tolerance)*2);
             }
             
@@ -512,16 +569,77 @@ module box_bottom() {
                 linear_extrude(box_thickness[1] + tolerance*2)
                 bl_half_circle_square(pd_typec_dim[2]+tolerance*2, box_bottom_height);
             }
+           
+            translate(box_dc_terminal_offset)
+            translate([0,-tolerance,dc_terminal_height-dc_terminal_dia/2])
+            rotate([-90,0,0])
+            union() {
+                translate([dc_terminal_dia/2,0,0])
+                dc_terminal_diff();
+                translate([dc_terminal_dia*1.5 + box_dc_terminal_distance,0,0])
+                dc_terminal_diff();
+            }
+            
+            translate(box_dc_connector_offset)
+            translate([0,dc_connector_dim[1]-dc_connector_dim[0]/2,dc_connector_dim[0]/2]) 
+            dc_connector_diff();
+            
+            translate([box_xh254_offset[0]-tolerance,box_xh254_offset[1] - tolerance,-tolerance]) {
+                cube([
+                    xh254_connector_dim[2] + tolerance*2, 
+                    xh254_connector_dim[1] + tolerance*2, 
+                    xh254_connector_width(2) + tolerance*3
+                ]);
+                cube([
+                    xh254_connector_dim[2] + tolerance*2 + box_offset[0], 
+                    xh254_connector_dim[1] + tolerance*2, 
+                    xh254_connector_width(2) + tolerance*2
+                ]);
+            }
         }
         
     }
 
 }
 
+
 box_bottom();
 
-translate(box_offset) {
+module box_component_plate() {
     
+    
+    linear_extrude(box_thickness[2])
+    difference() {
+        square([dsn_vc288_mount_dim[0], pd_dim[0]]);
+    
+        translate([switch_body_dim[2] + tolerance, box_offset[1]])
+        square([box_pin_offset[0] - switch_body_dim[2] - tolerance*2, pd_dim[0] - box_offset[1]*2]);
+    }
+    
+    
+    pin_holder_height = box_bottom_height - xh254_pin_holder_dim[2] - xh254_pin_holder_offset[2] - tolerance;
+    
+    translate([0,0,-pin_holder_height + box_thickness[2]])
+    linear_extrude(pin_holder_height)
+    translate([box_pin_offset[0] - tolerance, 0])
+    square([xh254_pin_holder_dim[0]*box_pin_counts[0]+tolerance, box_pin_offset[1] + xh254_pin_holder_dim[1]*box_pin_counts[1] + tolerance]);
+    
+
+    xh254_holder_height = box_bottom_height - box_offset[2] - xh254_connector_width(2) - tolerance;
+
+    translate([0,0,-xh254_holder_height + box_thickness[2]])
+    linear_extrude(xh254_holder_height)
+    translate([box_xh254_offset[0], 0])
+    square([xh254_connector_dim[2], box_xh254_offset[1] + xh254_connector_dim[1] + box_offset[1]]);
+    
+}
+
+*translate([0,0,box_bottom_inner_height+tolerance])
+translate(box_offset)
+box_component_plate();
+
+*translate(box_offset) {
+   
     pd_with_switches();
 
     translate(box_pin_offset)
@@ -536,51 +654,26 @@ translate(box_offset) {
     rotate([0,90,0])
     dc_connector();
 
-    translate([box_inner_dim[0]-xh254_connector_offset[2], 2, 0])
-    translate([-xh254_connector_dim[2],xh254_connector_dim[1],0])
+    translate(box_xh254_offset)
+    translate([-xh254_connector_offset[2],xh254_connector_dim[1],0])
     rotate([180,-90,0])
-    xh254_connector(2);  
+    xh254_connector(2);
 
     translate(box_dc_terminal_offset)
     translate([0,0,dc_terminal_height-dc_terminal_dia/2])
     rotate([-90,0,0])
     union() {
-        
         translate([dc_terminal_dia/2,0,0])
         dc_terminal(1);
         translate([dc_terminal_dia*1.5 + box_dc_terminal_distance,0,0])
         dc_terminal(1);
-        
     }
 
     *translate([0, (box_inner_dim[1] - dsn_vc288_dim[1])/2,box_bottom_inner_height+4])
     dsn_vc288();
-
-}
-
-// TODO fix offset
-module dc_terminal_diff() {
-
-    linear_extrude(dc_terminal_length + tolerance*2)
-    offset(tolerance)
-    dc_terminal_shape();
-
-    translate([0,0,dc_terminal_bolt_offset])
-    rotate([-90,0,0])
-    cylinder(d = dc_terminal_bolt_head_dia + tolerance*2, h = box_dc_terminal_offset[2] + (dc_terminal_height - dc_terminal_dia/2)); 
-
-    translate([0,0,dc_terminal_length - dc_terminal_bolt_offset])
-    rotate([-90,0,0])
-    cylinder(d = dc_terminal_bolt_head_dia + tolerance*2, h = box_dc_terminal_offset[2] + (dc_terminal_height - dc_terminal_dia/2) + box_thickness[2] + tolerance*2); 
     
+
 }
 
-translate(box_dc_terminal_offset)
-rotate([-90,0,0])
-union() {
-    translate([dc_terminal_dia/2,0,0])
-    dc_terminal_diff();
-    translate([dc_terminal_dia*1.5 + box_dc_terminal_distance,0,0])
-    dc_terminal_diff();
-}
-
+// TODO HOLDER for XH254 connector
+// TODO FIX pd switch holes
