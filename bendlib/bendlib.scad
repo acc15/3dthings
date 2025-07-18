@@ -17,14 +17,29 @@ function bl_nd(v, nd) = let(
     : [ for (i = [0 : count-1]) i < len(v) ? v[i] : default[i] ]
 : [ for (i = [0 : count-1]) v ];
 
+function bl_repeat(v, n) = [ for (i = [0:n-1]) v ];
+
 function bl_2d(v) = bl_nd(v,2);
 function bl_3d(v) = bl_nd(v,3);
 
+
+/** Returns property value from list of pairs where left is a string key and right is value */
+function bl_get(props, key, optional = false) = let(v = search([key], props)) is_num(v[0]) ? props[v[0]][1] : assert(optional, concat("No property found by key ", key)) undef;
+
+
+function bl_set_default(props, key, value) = let(v = search([key], props)) is_num(v[0]) ? props : is_list(props) ? concat(props, [key, value]) : [[key,value]];
+
+/** Returns first parameter if not undef, otherwise returns second paramater */
+function bl_def(v, v_def) = v != undef ? v : v_def;
+
+/** Multiplies vectors elementwise (hadamard product) */
+function bl_mul(a, b) = is_list(a) 
+    ? is_list(b) ? [ for (i = [0:max(len(a),len(b))-1]) bl_def(a[i], 1) * bl_def(b[i], 1) ] : [ for (v = a) v * b ] 
+    : is_list(b) ? [ for (v = b) v * a ] : a * b;
+
+
 /** Computes factorial */
 function bl_fac(n) = n <= 1 ? 1 : n * bl_fac(n - 1);
-
-/** Normalizes array such that if `a` is array then return `a`, otherwise generates array with values `a` */
-function bl_cast(a, l) = is_list(a) ? a : [ for (i = [0:l-1]) a ];
 
 /** Computes sum of all elements in array */
 function bl_sum(a, i = 0) = i >= len(a) ? 0 : a[i] + bl_sum(a, i + 1);
@@ -65,10 +80,10 @@ function bl_off(m, i = 0, sum = 0) = i > len(m) ? [] : concat([sum], bl_off(m, i
 function bl_flat(m) = [ for (k = m) for (n = k) n ];
 
 /** Creates translation matrix */
-function bl_move(vec, dims = 3) = let(a = bl_cast(vec, dims), l = len(vec)) [ for (i = [0:l]) [ for (j = [0:l]) i == j ? 1 : j == l ? vec[i] : 0 ] ];
+function bl_move(vec, dims = 3) = let(a = bl_nd(vec, dims), l = len(vec)) [ for (i = [0:l]) [ for (j = [0:l]) i == j ? 1 : j == l ? vec[i] : 0 ] ];
 
 /** Creates scale matrix. If vec is scalar - then creates uniform scale matrix */
-function bl_scale(vec, dims = 3) = let(a = bl_cast(vec, dims), l = len(a)) [ for (i = [0:l]) [ for (j = [0:l]) i == j ? i == l ? 1 : a[i] : 0 ] ];
+function bl_scale(vec, dims = 3) = let(a = bl_nd(vec, dims), l = len(a)) [ for (i = [0:l]) [ for (j = [0:l]) i == j ? i == l ? 1 : a[i] : 0 ] ];
 
 /** Creates 2d rotation matrix */
 function bl_rot_2(angle) = [[cos(angle),-sin(angle),0],[sin(angle),cos(angle),0],[0,0,1]];
@@ -81,6 +96,8 @@ function bl_rot_y(angle) = [[cos(angle),0,sin(angle),0],[0,1,0,0],[-sin(angle),0
 
 /** Creates rotation matrix around Z axis */
 function bl_rot_z(angle) = [[cos(angle),-sin(angle),0,0],[sin(angle),cos(angle),0,0],[0,0,1,0],[0,0,0,1]];
+
+function bl_rot(xyz) = bl_rot_z(xyz[2]) * bl_rot_y(xyz[1]) * bl_rot_x(xyz[0]);
 
 /** Creates axis-angle rotation matrix */
 function bl_rot_a(axis, angle) = let(n = bl_unit(axis), s = sin(angle), c = cos(angle), ac = 1 - c) [
@@ -116,18 +133,6 @@ function bl_rot_v(v) = let(
 
 /** Creates identity matrix */
 function bl_id(dim = 3) = [ for (i = [0:dim]) [ for (j = [0:dim]) i == j ? 1 : 0 ] ];
-
-/** If m_seq is matrix then return it, if m_seq is array of matricies then premultiplies all of them  */
-function bl_order(m_seq, i = 0) = i >= len(m_seq)-1 ? m_seq[i] : bl_order(m_seq, i + 1) * m_seq[i];
-
-/** If `mt` is matrix then return it, if `mt` is array of matricies then premultiplies all of them and returns result */
-function bl_normalize(mt) = len(mt[0][0]) == undef ? mt : bl_order(mt);
-
-/** Transforms point (or array of points) using supplied matrix (or set of matrix - see `bl_normalize`) */
-function bl_tr(v, m) = let(l = len(m), mn = bl_normalize(m)) 
-    len(v[0]) == undef
-    ? bl_head(mn * [ for (i = [0:l-1]) i < len(v) ? v[i] : i == l-1 ? 1 : 0 ], len(v))
-    : [ for (x = v) bl_tr(x, mn) ];
 
 /** 
     Normalizes radius[]/diameter[] values to [x_radius, y_radius] array
@@ -412,3 +417,15 @@ module bl_grid(counts, dim) {
         }
     }
 }
+
+echo(bl_move([3,3,3]) * bl_rot_x(90));
+
+#multmatrix(
+    bl_rot([30,45,60]) *
+    bl_move([3,3,3])
+)
+cube([10,20,30]);
+
+rotate([30,45,60])
+translate([3,3,3])
+cube([10,20,30]);

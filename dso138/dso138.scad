@@ -252,8 +252,6 @@ cms4056t_led_offsets = [
     [13, cms4056t_dim[1]-2, cms4056t_dim[2]],
     [14.3, cms4056t_dim[1]-2, cms4056t_dim[2]]
 ];
-
-
 cms4056t_pad_dim = [2,2];
 cms4056t_pad_hole_dia = 1;
 cms4056t_pad_offsets = [
@@ -685,7 +683,7 @@ module box_slider() {
 
 *battery_contact(false);
 
-box_battery_holder();
+box_battery_holder(true);
 
 
 

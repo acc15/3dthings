@@ -17,6 +17,9 @@ dsn_vc288_holes = [
     ["v", 0.7, [8, 4.5]]
 ];
 
+dsn_vc288_screen_protector_dim = [dsn_vc288_dim[0], dsn_vc288_dim[1], 0.8];
+
+
 pd_dim = [26.25, 11, 1.65];
 pd_typec_dim = [7.3,9,3.2];
 pd_typec_offset = [-2,(pd_dim[1]-pd_typec_dim[1])/2,pd_dim[2]];
@@ -42,7 +45,7 @@ switch_pin_dim = [0.5, 0.3, 4.5];
 module dsn_vc288_shape() {
     translate([dsn_vc288_mount_dim[0]/2, dsn_vc288_dim[1]/2])
     union() {
-        square(bl_nd(dsn_vc288_dim, 2), center = true);
+        square(bl_2d(dsn_vc288_dim), center = true);
         square(dsn_vc288_mount_dim, center = true);
     }
 }
@@ -87,6 +90,11 @@ module dsn_vc288() {
         color("darkgray")
         cube(dsn_vc288_screen_dim);
     }
+}
+
+module dsn_vc288_screen_protector() {  
+    color("#404040a0")
+    cube(dsn_vc288_screen_protector_dim);
 }
 
 module pd_switch() {
@@ -289,7 +297,7 @@ dc_terminal_bolt_hole_dia = 2.4;
 dc_terminal_hole_dia = 3.7;
 dc_terminal_length = 11.56;
 dc_terminal_bolt_dia = 2.2;
-dc_terminal_bolt_head_dia = 3.9;
+dc_terminal_bolt_head_dia = 4;
 dc_terminal_bolt_length = 6.6;
 dc_terminal_bolt_head_length = 2;
 dc_terminal_bolt_offset = 2.5;
@@ -379,7 +387,7 @@ box_bolt_head_d = box_nut_d;
 
 box_bolt_hole_d = box_bolt_d + tolerance*2;
 box_bolt_head_hole_d = box_bolt_head_d + tolerance*2;
-box_bolt_head_thickness = 3 + tolerance;
+box_bolt_head_thickness = 3;
 
 box_nut_hole_d = box_nut_d / sin(60) + tolerance*2;
 box_nut_thickness = 2.3 + tolerance;
@@ -414,6 +422,10 @@ box_dc_terminal_offset = [
 ];
 
 box_xh254_offset = [box_inner_dim[0]-xh254_connector_dim[2], 2, 0];
+
+box_total_height = 33;
+box_dsn_vc288_holder_height = box_total_height - (box_bottom_height + tolerance + dsn_vc288_screen_dim[2] + dsn_vc288_screen_protector_dim[2] + box_offset[2]);
+
 
 module dc_connector_diff() {
 
@@ -456,6 +468,13 @@ module box_mount_ear_shape() {
     }
 }
 
+module box_shape() {
+    square(box_dim);
+    bl_quad_mirror(box_dim, 4)
+    box_mount_ear_shape()
+        circle(d = box_bolt_hole_d);
+}
+
 module box_bottom() {
         
     pd_switch_mid = pd_dim[0] - pd_switch_offsets[1][0];
@@ -463,12 +482,7 @@ module box_bottom() {
     pd_switch_start = pd_switch_mid - pd_switch_len/2;
     pd_switch_end = pd_switch_mid + pd_switch_len/2;
         
-    module box_shape() {
-        square(box_dim);
-        bl_quad_mirror(box_dim, 4)
-        box_mount_ear_shape()
-            circle(d = box_bolt_hole_d);
-    }
+
 
     color("#406040")
     difference() {
@@ -522,6 +536,13 @@ module box_bottom() {
                 box_offset[1] + box_xh254_offset[1] + xh254_connector_dim[1] + box_offset[1], 
                 box_offset[2] + xh254_connector_width(2)
             ]);
+            
+            translate([box_offset[0] + box_xh254_offset[0] - box_offset[0],0,0])
+            cube([
+                xh254_connector_dim[2] + box_offset[0]*2, 
+                box_offset[1] + box_xh254_offset[1] + (xh254_connector_dim[1] - xh254_connector_pin_offset[1]*2 - xh254_connector_pin_dim[1]), 
+                box_offset[2] + xh254_connector_width(2)
+            ]);
         }
         
         
@@ -546,13 +567,15 @@ module box_bottom() {
             }
             
             for (i=[0:2]) {
-                translate([-tolerance,
+                translate([
+                    -tolerance,
                     (switch_body_dim[1] - switch_handle_dim[1])/2 + i*(switch_body_dim[1]+tolerance), 
-                    tolerance + (switch_body_dim[0] - switch_move_width)/2 - tolerance])
+                    /*(switch_body_dim[0] - switch_move_width)/2*/0
+                ])
                 cube([
                     box_thickness[0],
                     switch_handle_dim[1],
-                    switch_move_width
+                    /*switch_move_width*/switch_body_dim[0]
                 ] + bl_3d(tolerance)*2);
             }
             
@@ -590,10 +613,11 @@ module box_bottom() {
                     xh254_connector_dim[1] + tolerance*2, 
                     xh254_connector_width(2) + tolerance*3
                 ]);
+                translate([0,xh254_connector_thickness,xh254_connector_thickness])
                 cube([
                     xh254_connector_dim[2] + tolerance*2 + box_offset[0], 
-                    xh254_connector_dim[1] + tolerance*2, 
-                    xh254_connector_width(2) + tolerance*2
+                    xh254_connector_dim[1] - xh254_connector_thickness + tolerance*2, 
+                    xh254_connector_width(2) - xh254_connector_thickness*2 + tolerance*2
                 ]);
             }
         }
@@ -601,9 +625,6 @@ module box_bottom() {
     }
 
 }
-
-
-box_bottom();
 
 module box_component_plate() {
     
@@ -634,32 +655,105 @@ module box_component_plate() {
     
 }
 
-*translate([0,0,box_bottom_inner_height+tolerance])
+module box_dsn_vc288_holder() {
+    difference() {
+        linear_extrude(box_dsn_vc288_holder_height)
+        difference() {
+            square(bl_2d(box_inner_dim));
+            translate([(box_inner_dim[0] - (dsn_vc288_dim[0] + tolerance*2))/2, (box_inner_dim[1] - (dsn_vc288_dim[1] - box_thickness[1]*2 + tolerance*2))/2])
+            square([dsn_vc288_dim[0]+tolerance*2, dsn_vc288_dim[1] - box_thickness[1]*2 + tolerance*2]);
+        }
+        
+        translate([0,0,box_dsn_vc288_holder_height - dsn_vc288_dim[2]-tolerance])
+        linear_extrude(dsn_vc288_dim[2] + tolerance*2)
+        offset(delta = tolerance)
+        translate([0,(box_inner_dim[1] - dsn_vc288_dim[1])/2])
+        dsn_vc288_shape();
+
+    }
+
+}
+
+module box_top() {
+    
+    box_top_height = box_dsn_vc288_holder_height + dsn_vc288_screen_dim[2] + dsn_vc288_screen_protector_dim[2] + box_offset[2];
+    
+    
+    translate([0,0,box_top_height - (box_thickness[2] + tolerance + dsn_vc288_screen_protector_dim[2])])
+    render()
+    difference() {
+        linear_extrude(box_thickness[2] + tolerance + dsn_vc288_screen_protector_dim[2])
+        difference() {
+            square(box_dim);
+            translate([(box_dim[0] - (dsn_vc288_screen_protector_dim[0] - box_offset[0]*2))/2, (box_dim[1] - (dsn_vc288_screen_protector_dim[1] - tolerance*2))/2])
+            square([dsn_vc288_screen_protector_dim[0] - box_offset[0]*2, dsn_vc288_screen_protector_dim[1] - tolerance*2]);
+        }
+        
+        translate([
+            (box_dim[0] - (dsn_vc288_screen_protector_dim[0] + tolerance*2))/2, 
+            (box_dim[1] - (dsn_vc288_screen_protector_dim[1] + tolerance*2))/2, 
+            -tolerance
+        ])
+        cube(dsn_vc288_screen_protector_dim + bl_3d(tolerance)*2);
+    }
+
+    render()
+    difference() {
+        linear_extrude(box_top_height)
+        difference() {
+            box_shape();
+            translate(bl_2d(box_thickness))
+            square(box_dim - bl_2d(box_thickness)*2);
+        }
+        
+        bl_quad_mirror(box_dim, 4)
+        translate([box_nut_hole_d/2+box_thickness[0],-box_nut_hole_d/2,box_top_height-box_bolt_head_thickness-tolerance])
+        cylinder(d = box_bolt_head_hole_d, h = box_bolt_head_thickness + tolerance*2);
+    }
+}
+
+
+//render()
+
+*box_bottom();
+
+*rotate([180,0,0])
+translate([0,0,box_bottom_inner_height+tolerance])
 translate(box_offset)
 box_component_plate();
 
+*translate([box_offset[0],box_offset[1],box_bottom_height + tolerance])
+render()
+box_dsn_vc288_holder();
+
+rotate([180,0,0])
+translate([0,0,box_bottom_height + tolerance])
+box_top();
+
+
 *translate(box_offset) {
    
-    pd_with_switches();
+    *translate([0,0,pd_dim[1] - 3])
+    pd_with_switches(1);
 
-    translate(box_pin_offset)
+    *translate(box_pin_offset)
     translate([xh254_pin_holder_dim[0]*box_pin_counts[0],0,0])
     rotate([0,180,0])
     bl_grid(box_pin_counts, xh254_pin_holder_dim) {
         xh254_pin();
     }
 
-    translate(box_dc_connector_offset)
+    *translate(box_dc_connector_offset)
     translate([0,dc_connector_dim[1]-dc_connector_dim[0]/2,dc_connector_dim[0]/2]) 
     rotate([0,90,0])
     dc_connector();
 
-    translate(box_xh254_offset)
+    *translate(box_xh254_offset)
     translate([-xh254_connector_offset[2],xh254_connector_dim[1],0])
     rotate([180,-90,0])
     xh254_connector(2);
 
-    translate(box_dc_terminal_offset)
+    *translate(box_dc_terminal_offset)
     translate([0,0,dc_terminal_height-dc_terminal_dia/2])
     rotate([-90,0,0])
     union() {
@@ -668,12 +762,15 @@ box_component_plate();
         translate([dc_terminal_dia*1.5 + box_dc_terminal_distance,0,0])
         dc_terminal(1);
     }
-
-    *translate([0, (box_inner_dim[1] - dsn_vc288_dim[1])/2,box_bottom_inner_height+4])
+    
+    translate([0, (box_inner_dim[1] - dsn_vc288_dim[1])/2,box_bottom_inner_height+box_offset[2]+tolerance+(box_dsn_vc288_holder_height-dsn_vc288_dim[2])])
     dsn_vc288();
     
-
+    translate([
+        (box_inner_dim[0] - dsn_vc288_screen_protector_dim[0])/2, 
+        (box_inner_dim[1] - dsn_vc288_screen_protector_dim[1])/2,
+        box_bottom_inner_height+box_offset[2]+tolerance+box_dsn_vc288_holder_height+dsn_vc288_screen_dim[2]
+    ])
+    dsn_vc288_screen_protector();
+    
 }
-
-// TODO HOLDER for XH254 connector
-// TODO FIX pd switch holes
