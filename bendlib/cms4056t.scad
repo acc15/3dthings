@@ -54,14 +54,14 @@ module cms4056t_typec_shape(type) {
     bl_hull_circle(typec_dim[2], typec_dim[0]);
 }
 
-module cms4056t_typec_diff(type, thickness, tolerance, axial_tolerance = undef, board_offset = undef) {
+module cms4056t_typec_diff(type, thickness, tolerance, axial_tolerance = undef, part_offset = undef) {
     axial_tolerance = bl_def(axial_tolerance, tolerance);
-    board_offset = bl_def(board_offset, axial_tolerance);
+    part_offset = bl_def(part_offset, axial_tolerance);
     
     typec_offset = cms4056t_typec_offset(type);
     board_dim = cms4056t_board_dim(type);
     
-    translate([typec_offset[0], board_dim[1] + board_offset, typec_offset[2]])
+    translate([typec_offset[0], board_dim[1] + part_offset, typec_offset[2]])
     rotate([90,0,0])
     translate([0,0,-thickness-axial_tolerance])
     linear_extrude(thickness + axial_tolerance*2)

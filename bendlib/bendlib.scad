@@ -80,27 +80,29 @@ function bl_off(m, i = 0, sum = 0) = i > len(m) ? [] : concat([sum], bl_off(m, i
 function bl_flat(m) = [ for (k = m) for (n = k) n ];
 
 /** Creates translation matrix */
-function bl_move(vec, dims = 3) = let(a = bl_nd(vec, dims), l = len(vec)) [ for (i = [0:l]) [ for (j = [0:l]) i == j ? 1 : j == l ? vec[i] : 0 ] ];
+function bl_translate(vec, dims = 3) = let(a = bl_nd(vec, dims), l = len(vec)) [ for (i = [0:l]) [ for (j = [0:l]) i == j ? 1 : j == l ? vec[i] : 0 ] ];
+    
+function bl_translation(matrix) = [ for (i=[0:len(matrix)-2]) matrix[i][len(matrix[i])-1] ];
 
 /** Creates scale matrix. If vec is scalar - then creates uniform scale matrix */
 function bl_scale(vec, dims = 3) = let(a = bl_nd(vec, dims), l = len(a)) [ for (i = [0:l]) [ for (j = [0:l]) i == j ? i == l ? 1 : a[i] : 0 ] ];
 
 /** Creates 2d rotation matrix */
-function bl_rot_2(angle) = [[cos(angle),-sin(angle),0],[sin(angle),cos(angle),0],[0,0,1]];
+function bl_rotate_2(angle) = [[cos(angle),-sin(angle),0],[sin(angle),cos(angle),0],[0,0,1]];
 
 /** Creates rotation matrix around X axis */
-function bl_rot_x(angle) = [[1,0,0,0],[0,cos(angle),-sin(angle),0],[0,sin(angle),cos(angle),0],[0,0,0,1]];
+function bl_rotate_x(angle) = [[1,0,0,0],[0,cos(angle),-sin(angle),0],[0,sin(angle),cos(angle),0],[0,0,0,1]];
 
 /** Creates rotation matrix around Y axis */
-function bl_rot_y(angle) = [[cos(angle),0,sin(angle),0],[0,1,0,0],[-sin(angle),0,cos(angle),0],[0,0,0,1]];
+function bl_rotate_y(angle) = [[cos(angle),0,sin(angle),0],[0,1,0,0],[-sin(angle),0,cos(angle),0],[0,0,0,1]];
 
 /** Creates rotation matrix around Z axis */
-function bl_rot_z(angle) = [[cos(angle),-sin(angle),0,0],[sin(angle),cos(angle),0,0],[0,0,1,0],[0,0,0,1]];
+function bl_rotate_z(angle) = [[cos(angle),-sin(angle),0,0],[sin(angle),cos(angle),0,0],[0,0,1,0],[0,0,0,1]];
 
-function bl_rot(xyz) = bl_rot_z(xyz[2]) * bl_rot_y(xyz[1]) * bl_rot_x(xyz[0]);
+function bl_rotate(xyz) = bl_rotate_z(xyz[2]) * bl_rotate_y(xyz[1]) * bl_rotate_x(xyz[0]);
 
 /** Creates axis-angle rotation matrix */
-function bl_rot_a(axis, angle) = let(n = bl_unit(axis), s = sin(angle), c = cos(angle), ac = 1 - c) [
+function bl_rotate_a(axis, angle) = let(n = bl_unit(axis), s = sin(angle), c = cos(angle), ac = 1 - c) [
     [c + ac*n[0]*n[0], ac*n[0]*n[1] - s*n[2], ac*n[0]*n[2] + s*n[1], 0],
     [ac*n[1]*n[0] + s*n[2], c + ac*n[1]*n[1], ac*n[1]*n[2] - s*n[0], 0],
     [ac*n[2]*n[0] - s*n[1], ac*n[2]*n[1] + s*n[0], c + ac*n[2]*n[2], 0],
@@ -108,7 +110,7 @@ function bl_rot_a(axis, angle) = let(n = bl_unit(axis), s = sin(angle), c = cos(
 ];
 
 /** Creates rotation matrix from quaternion */
-function bl_rot_q(q) = let(x = q[1], y = q[2], z = q[3], w = q[0], xw = 2*x*w, yw = 2*y*w, zw = 2*z*w) [
+function bl_rotate_q(q) = let(x = q[1], y = q[2], z = q[3], w = q[0], xw = 2*x*w, yw = 2*y*w, zw = 2*z*w) [
     [1-2*y*y-2*z*z, 2*x*y - zw, 2*x*z + yw, 0],
     [2*x*y+zw, 1-2*x*x-2*z*z, 2*y*z - xw, 0],
     [2*x*z-yw, 2*y*z+xw, 1-2*x*x-2*y*y, 0],
@@ -118,7 +120,7 @@ function bl_rot_q(q) = let(x = q[1], y = q[2], z = q[3], w = q[0], xw = 2*x*w, y
 function bl_ort(v) = [-v[1],v[2],-v[0]];
 
 /** Creates rotation matrix from plane normal */
-function bl_rot_v(v) = let(
+function bl_rotate_v(v) = let(
     up = [0,0,1],
     f = bl_unit(v),
     s = bl_unit_identity(cross(f, up), 0),
@@ -270,7 +272,7 @@ function bl_bezier(points, last = true) = len(points) <= 2 ? points :
     
 module bl_line_3(p1, p2, d = 1) {
     v = p2 - p1;
-    m = bl_rot_v(v);
+    m = bl_rotate_v(v);
     translate(p1) {
         multmatrix(m) {
             linear_extrude(norm(v)) {
@@ -418,14 +420,28 @@ module bl_grid(counts, dim) {
     }
 }
 
-echo(bl_move([3,3,3]) * bl_rot_x(90));
+module bl_box(xyz_dim, xyz_thickness, center = false) {
+    translate(center ? [0,0,0] : xyz_dim/2)
+    difference() {
+        cube(xyz_dim, center = true);
+        cube(xyz_dim - [ for (t = xyz_thickness) t + (t <= 0 ? -1 : 0) ]*2, center = true);
+    }
+}
 
-#multmatrix(
-    bl_rot([30,45,60]) *
-    bl_move([3,3,3])
-)
+
+test_transform = bl_translate([3,3,3]) * bl_rotate([30,45,60]);
+
+echo(test_transform);
+
+#multmatrix(test_transform)
 cube([10,20,30]);
 
-rotate([30,45,60])
+echo(bl_translation(test_transform));
+
+
 translate([3,3,3])
+rotate([30,45,60])
 cube([10,20,30]);
+
+
+bl_box([10,10,10],[1,1,0], center=false);

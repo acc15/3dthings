@@ -43,18 +43,21 @@ module box() {
     }
 }
 
-button_offset = [box_holder_dim[0]/2, box_holder_dim[1] - button_body_dim(button)[2] - box_thickness[1] - box_tolerance[1], box_holder_dim[2]/2];
-
-*translate(button_offset)
-rotate([-90,0,0])
-button(button);
+button_offset = [
+    box_holder_dim[0]/2, 
+    box_holder_dim[1] - button_body_dim(button)[2] - box_thickness[1] - box_tolerance[1], 
+    box_holder_dim[2]/2
+];
+button_transform = bl_translate(button_offset) * bl_rotate([-90,0,0]);
 
 cms4056t_offset = box_thickness + box_tolerance + [cms4056t_dim[1],box_dim[2] - cms4056t_dim[2],cms4056t_dim[0]];
-cms4056t_transform = bl_move(cms4056t_offset) * bl_rot([0,90,90]);
+cms4056t_transform = bl_translate(cms4056t_offset) * bl_rotate([0,90,90]);
+
+*multmatrix(button_transform)
+button(button);
 
 *multmatrix(cms4056t_transform)
 cms4056t(cms4056t);
-
 
 module box_holder_mount() {
     h = box_tolerance[2] + box_hole_dia/2 + box_thickness[2];
@@ -112,22 +115,16 @@ module box_holder() {
             button_stand_dim = [button_body_dim(button)[0], box_thickness[1] + button_body_dim(button)[2], button_offset[2] - button_body_dim(button)[1]/2 - box_tolerance[2]];
             
             translate([button_offset[0] - button_body_dim(button)[0]/2,box_holder_dim[1] - button_stand_dim[1],0])
-            cube(button_stand_dim);
+            bl_box(button_stand_dim, [0,box_thickness[1],box_thickness[2]]);
         }
 
         multmatrix(cms4056t_transform)
         cms4056t_typec_diff(cms4056t, box_thickness[0], box_tolerance[1], box_tolerance[0]);
         
-        translate([button_offset[0],box_holder_dim[1],button_offset[2]])
-        rotate([-90,0,0])
-        translate([0,0,-box_thickness[1]-box_tolerance[1]])
-        cylinder(d = button_mount_dim(button)[0] + box_tolerance[0]*2, h = box_thickness[1] + box_tolerance[1]*2);
+        multmatrix(button_transform)
+        button_mount_diff(button, box_thickness[1], box_tolerance[0], box_tolerance[1]);
     }
 }
-
-
-echo(cms4056t_offset[1] - battery_box_dim(battery_box)[1]);
-echo(button_offset[1] - battery_box_dim(battery_box)[1]);
 
 module box_holder_plate() {
 
@@ -153,8 +150,13 @@ module box_holder_plate() {
 
 }
 
-box_holder_plate();
+*box_holder_plate();
 box_holder();
+
+
+*rotate([90,0,0])
+box_holder_plate();
+
 
 *box();
 

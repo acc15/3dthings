@@ -40,6 +40,15 @@ module button_body_shape(type) {
     }
 }
 
+module button_mount_diff(type, thickness, tolerance, thickness_tolerance = undef, part_offset = undef) {
+    body_dim = button_body_dim(type);
+    mount_dim = button_mount_dim(type);
+    thickness_tolerance = bl_def(thickness_tolerance, tolerance);
+    part_offset = bl_def(part_offset, thickness_tolerance);
+    translate([0,0,body_dim[2]+part_offset-thickness_tolerance])
+    cylinder(d = mount_dim[0] + tolerance*2, h = thickness + thickness_tolerance*2);
+}
+
 module button(type = button()) {
     
     body_dim = button_body_dim(type);
@@ -67,4 +76,7 @@ module button(type = button()) {
 $fa = 0.2;
 $fs = 0.2;
 
-button();
+button = button();
+button(button);
+
+#button_mount_diff(button, 1.5, 0.2);
