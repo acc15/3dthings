@@ -385,13 +385,14 @@ module box_top() {
             linear_extrude(box_top_offset_z-board_dim[2]-trigged_led_height)
             bl_ring(trigged_led_dia, box_thickness[0]);
          
+            color("black")
             for (off = slider_offsets) {
                 translate(bl_nd(off + slider_dim/2,[0,0,box_slider_offset_z+tolerance]))
                 linear_extrude(box_slider_ext_height)
                 bl_hull_ring(
                     inner_d = box_button_ext_dia+tolerance*2, 
                     thickness = box_thickness[0], 
-                    length = (slider_handle_move)*3,
+                    distance = (slider_handle_move-slider_handle_dim[0])*3,
                     center=true
                 );
             }

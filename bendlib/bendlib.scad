@@ -373,7 +373,8 @@ module bl_quad_mirror(dim, offsets, center=false, move=true) {
     }
 }
 
-module bl_ring(inner_d, thickness = undef, outer_d = undef) {
+module bl_ring(inner_d = undef, thickness = undef, outer_d = undef) {
+    inner_d = inner_d != undef ? inner_d : outer_d - thickness*2;
     outer_d = outer_d != undef ? outer_d : inner_d + thickness*2;
     difference() {
         circle(d = outer_d);
@@ -381,10 +382,11 @@ module bl_ring(inner_d, thickness = undef, outer_d = undef) {
     }
 }
 
-module bl_hull_circle(d, length, r = undef, distance = undef, center = false) {
-    d = r != undef ? r * 2 : d;
+module bl_hull_circle(d = undef, length = undef, r = undef, distance = undef, center = false) {
+    r = r != undef ? r : d / 2;
+    d = d != undef ? d : r * 2;
     distance = distance != undef ? distance : length-d;
-    translate(center ? [-distance/2,0] : [d/2,d/2])
+    translate(center ? [-distance/2,0] : [r,r])
     hull() {
         circle(d = d);
         translate([distance,0])
@@ -392,12 +394,14 @@ module bl_hull_circle(d, length, r = undef, distance = undef, center = false) {
     }
 }
 
-module bl_hull_ring(inner_d, thickness, length, outer_d = undef, center = false) {
+module bl_hull_ring(inner_d = undef, thickness = undef, length = undef, outer_d = undef, distance = undef, center = false) {
+    inner_d = inner_d != undef ? inner_d : outer_d - thickness*2;
     outer_d = outer_d != undef ? outer_d : inner_d + thickness*2;
-    translate(center ? [0,0] : [length/2,outer_d/2])
+    distance = distance != undef ? distance : length - outer_d; 
+    translate(center ? [0,0] : [outer_d/2+distance/2,outer_d/2])
     difference() {
-        bl_hull_circle(outer_d, length, center=true);
-        bl_hull_circle(inner_d, length-inner_d/2, center=true);
+        bl_hull_circle(d = outer_d, distance = distance, center=true);
+        bl_hull_circle(d = inner_d, distance = distance, center=true);
     }
 }
 
@@ -432,6 +436,3 @@ module bl_box(xyz_dim, xyz_thickness, center = false) {
         cube(xyz_dim - [ for (t = xyz_thickness) t + (t <= 0 ? -1 : 0) ]*2, center = true);
     }
 }
-
-
-bl_hull_ring(inner_d = 10, outer_d = 14, length = 20, center = true, $fa=0.2, $fs=0.2);
