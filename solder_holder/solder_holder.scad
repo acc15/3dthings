@@ -1,3 +1,5 @@
+use <../bendlib/bendlib.scad>;
+
 $fa = 0.2;
 $fs = 0.2;
 
@@ -25,20 +27,9 @@ module pillar_shape() {
     }
 }
 
-module ring_shape(d, t) {
-    difference() {
-        circle(d = d);
-        circle(d = d - t*2);
-    }
-}
-
-module ring(d, t, h) {
-    linear_extrude(h)
-    ring_shape(d, t);
-}
-
 module spool() {
-    ring(spool_dia, (spool_dia - spool_hole)/2, spool_length);
+    linear_extrude(spool_length)
+    bl_ring(spool_dia, (spool_dia - spool_hole)/2);
 }
 
 module holder_pillar() {
@@ -143,10 +134,10 @@ module assembly() {
 //holder_base(false);
 //holder_base(true);
 
-rotate([0,90,0])
+*rotate([0,90,0])
 solder_pillar();
 
-*rotate([90,0,0])
+rotate([90,0,0])
 assembly();
 
 

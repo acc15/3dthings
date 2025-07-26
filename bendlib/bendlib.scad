@@ -373,26 +373,31 @@ module bl_quad_mirror(dim, offsets, center=false, move=true) {
     }
 }
 
-module bl_ring(d, t) {
+module bl_ring(inner_d, thickness = undef, outer_d = undef) {
+    outer_d = outer_d != undef ? outer_d : inner_d + thickness*2;
     difference() {
-        circle(d = d + t*2);
-        circle(d = d);
+        circle(d = outer_d);
+        circle(d = inner_d);
     }
 }
 
-module bl_hull_circle(d, l, center = false) {
-    translate(center ? [0,0] : [d/2,d/2])
+module bl_hull_circle(d, length, r = undef, distance = undef, center = false) {
+    d = r != undef ? r * 2 : d;
+    distance = distance != undef ? distance : length-d;
+    translate(center ? [-distance/2,0] : [d/2,d/2])
     hull() {
         circle(d = d);
-        translate([l-d,0])
+        translate([distance,0])
         circle(d = d);
     }
 }
 
-module bl_hull_ring(d, t, l) {
+module bl_hull_ring(inner_d, thickness, length, outer_d = undef, center = false) {
+    outer_d = outer_d != undef ? outer_d : inner_d + thickness*2;
+    translate(center ? [0,0] : [length/2,outer_d/2])
     difference() {
-        bl_hull_circle(d+t*2, l);
-        bl_hull_circle(d, l);
+        bl_hull_circle(outer_d, length, center=true);
+        bl_hull_circle(inner_d, length-inner_d/2, center=true);
     }
 }
 
@@ -429,19 +434,4 @@ module bl_box(xyz_dim, xyz_thickness, center = false) {
 }
 
 
-test_transform = bl_translate([3,3,3]) * bl_rotate([30,45,60]);
-
-echo(test_transform);
-
-#multmatrix(test_transform)
-cube([10,20,30]);
-
-echo(bl_translation(test_transform));
-
-
-translate([3,3,3])
-rotate([30,45,60])
-cube([10,20,30]);
-
-
-bl_box([10,10,10],[1,1,0], center=false);
+bl_hull_ring(inner_d = 10, outer_d = 14, length = 20, center = true, $fa=0.2, $fs=0.2);

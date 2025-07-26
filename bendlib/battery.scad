@@ -1,23 +1,32 @@
 use <bendlib.scad>;
 
-function battery(dim = undef, flat = undef) = [bl_def(dim, [18,65]), bl_def(flat, false)];
-function battery_18650() = battery([18,65]);
+function battery(dim = undef, plus_dim = undef, minus_dim = undef) = [bl_def(dim, [18,65]), plus_dim, minus_dim];
+function battery_18650(flat=false) = battery([18,65], flat ? undef : [5.5, 1.5]);
+function battery_32700() = battery([32,70], undef, undef);
 
 function battery_dim(type) = type[0];
-function battery_flat(type) = type[1];
-function battery_tolerance(type) = type[1];
+function battery_plus_dim(type) = type[1];
+function battery_minus_dim(type) = type[2];
+function battery_flat(type) = type[1] == undef && type[2] == undef;
 
 module battery(type = battery_18650()) {
     dim = battery_dim(type);
-    flat = battery_flat(type);
     
     d = dim[0];
     l = dim[1];
     
-    if (!flat) {
-        translate([0,0,l])
+    plus_dim = battery_plus_dim(type);
+    if (plus_dim != undef) {
+        translate([0,0,l - 1])
         color("red")
-        cylinder(d = 5.5, h = 1);
+        cylinder(d = plus_dim[0], h = plus_dim[1] + 1);
+    }
+    
+    minus_dim = battery_minus_dim(type);
+    if (minus_dim != undef) {
+        translate([0,0,-minus_dim[1]])
+        color("black")
+        cylinder(d = minus_dim[0], h = minus_dim[1] + 1);
     }
     
     translate([0,0,l*0.9])
@@ -211,3 +220,5 @@ $fs = 0.2;
 
 *battery_contact_diff();
 
+
+battery(battery_32700());

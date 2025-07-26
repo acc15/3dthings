@@ -10,7 +10,7 @@ $fs = 0.2;
 //box_battery_holder_b/butcontact_hole = battery_contact_dim[2] + tolerance;
 //box_battery_holder_contact_wall = 0.8;
 
-box_dim = [91,91,26];
+box_dim = [91,91,25.5];
 box_thickness = [0.5*3, 0.5*3, 0.3*5];
 box_hole_offsets = [[8,8],[8,8],[8,8],[8,8]];
 box_hole_dia = 3.2;
@@ -116,6 +116,14 @@ module box_holder() {
             
             translate([button_offset[0] - button_body_dim(button)[0]/2,box_holder_dim[1] - button_stand_dim[1],0])
             bl_box(button_stand_dim, [0,box_thickness[1],box_thickness[2]]);
+            
+            *translate([0,battery_box_dim(battery_box)[1] - box_thickness[1],0])
+            cube([
+                box_thickness[0] + cms4056t_dim(cms4056t)[1] - cms4056t_pad_dim(cms4056t)[1]*2, 
+                box_holder_dim[1] - battery_box_dim(battery_box)[1] - cms4056t_dim(cms4056t)[2] - box_tolerance[1]*2, 
+                box_thickness[2] + box_tolerance[2] + cms4056t_dim(cms4056t)[0]
+            ]);
+            
         }
 
         multmatrix(cms4056t_transform)
@@ -135,26 +143,37 @@ module box_holder_plate() {
         box_holder_dim[2] - box_thickness[2] - box_tolerance[2]*2
     ];
 
-    translate(box_tolerance + [
-        box_thickness[0] + box_tolerance[0] + cms4056t_dim(cms4056t)[1],
-        battery_box_dim(battery_box)[1],
-        box_thickness[2]
-    ]) {
-        cube(box_holder_plate_dim);
-        translate([0,0,cms4056t_dim(cms4056t)[0]/2])
-        cube([box_thickness[0],wall_distance,cms4056t_dim(cms4056t)[0]/2]);
-    }
+    box_holder_plate_offset = box_thickness[0] + box_tolerance[0]*2 + cms4056t_dim(cms4056t)[1];
+
+    translate([0, box_tolerance[1] + battery_box_dim(battery_box)[1], 0]) {
+
+        translate([
+            box_thickness[0] + box_tolerance[0]*2 + cms4056t_dim(cms4056t)[1],
+            0,
+            box_thickness[2] + box_tolerance[2]
+        ]) {
+            cube(box_holder_plate_dim);
+            translate([0,0,cms4056t_dim(cms4056t)[0]/2])
+            cube([box_thickness[0],wall_distance,cms4056t_dim(cms4056t)[0]/2]);
+        }
         
-    translate([button_offset[0] - button_body_dim(button)[0]/2, battery_box_dim(battery_box)[1] + box_tolerance[1], button_offset[2] + button_body_dim(button)[1]/2 + box_tolerance[2]])
-    cube([button_body_dim(button)[0],wall_distance,box_thickness[2]]);
+        translate([button_offset[0] - button_body_dim(button)[0]/2, 0, button_offset[2] + button_body_dim(button)[1]/2 + box_tolerance[2]])
+        cube([button_body_dim(button)[0],wall_distance,box_thickness[2]]);
+
+        box_holder_plate_fill = box_holder_plate_dim[0] - (button_offset[0] - box_holder_plate_offset)*2;
+
+        translate([box_holder_dim[0] - box_thickness[0] - box_tolerance[0] - box_holder_plate_fill, 0, box_thickness[2] + box_tolerance[2]])
+        bl_box([box_holder_plate_dim[0] - (button_offset[0] - box_holder_plate_offset)*2, wall_distance, box_holder_plate_dim[2]], [box_thickness[0],0,box_thickness[2]]);
+        
+    }
 
 }
 
 *box_holder_plate();
-box_holder();
+*box_holder();
 
 
-*rotate([90,0,0])
+rotate([90,0,0])
 box_holder_plate();
 
 
