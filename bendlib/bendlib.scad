@@ -168,13 +168,13 @@ function bl_ellipse_perimeter(radius) = let(ra = bl_radius_cast(radius))
 function bl_arc_steps(radius, angle) = let(aa = bl_angle_cast(angle)) $fn > 0 ? $fn : ceil(max(min(abs(aa[1] - aa[0]) / $fa, bl_ellipse_perimeter(radius) / $fs), 5));
 
 /** Computes single arc point at given angle `a` */
-function bl_arc_pt(radius, angle, position = [0,0]) = let(ra = bl_radius_cast(radius)) [cos(angle) * ra[0] + position[0], sin(angle) * ra[1] + position[1]];
+function bl_polar(radius, angle) = let(ra = bl_radius_cast(radius)) bl_mul([cos(angle), sin(angle)], ra);
 
 /** Computes arc points using fixed amount of steps */
 function bl_arc_loop(radius, angle, steps, position = [0,0], slice = [0,0]) =
     let(ra = bl_radius_cast(radius), aa = bl_angle_cast(angle)) ra[0] == 0 || ra[1] == 0 
         ? [ position ]
-        : [ for(i = [slice[0] : steps + slice[1]]) bl_arc_pt(ra, aa[0] + i * (aa[1] - aa[0]) / steps, position) ];
+        : [ for(i = [slice[0] : steps + slice[1]]) bl_polar(ra, aa[0] + i * (aa[1] - aa[0]) / steps) + position ];
 
 /** Computes arc */
 function bl_arc(radius, angle, position = [0,0], slice = [0,0]) = bl_arc_loop(radius, angle, bl_arc_steps(radius, angle), position, slice);
@@ -436,5 +436,12 @@ module bl_box(xyz_dim, xyz_thickness, center = false) {
     difference() {
         cube(xyz_dim, center = true);
         cube(xyz_dim - [ for (t = xyz_thickness) t + (t <= 0 ? -1 : 0) ]*2, center = true);
+    }
+}
+
+module bl_offset_clone(offsets) {
+    for (off = offsets) {
+        translate(off)
+        children();
     }
 }
