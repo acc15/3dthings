@@ -15,7 +15,7 @@ function bl_nd(v, nd) = let(
 ) is_list(v[0])
     ? [ for (p = v) bl_nd(p, default) ]
     : [ for (i = [0 : count-1]) i < len(v) ? v[i] : default[i] ]
-: [ for (i = [0 : count-1]) v ];
+: v != undef ? [ for (i = [0 : count-1]) v ] : undef;
 
 function bl_repeat(v, n) = [ for (i = [0:n-1]) v ];
 
@@ -364,12 +364,14 @@ module bl_quad_mirror(dim, offsets, center=false, move=true) {
     
     for ($index = [0:len(o)-1]) {
         $offset = o[$index];
-        translate(center ? [0,0,0] : d/2)
-        mirror([0,0,floor($index / 4) % 2])
-        mirror([0,floor($index / 2) % 2,0])
-        mirror([$index % 2,0,0])
-        translate(-d/2 + (move ? $offset : bl_3d(0)))
-        children();
+        if ($offset != undef) {
+            translate(center ? bl_3d(0) : d/2)
+            mirror([0,0,floor($index / 4) % 2])
+            mirror([0,floor($index / 2) % 2,0])
+            mirror([$index % 2,0,0])
+            translate(-d/2 + (move ? $offset : bl_3d(0)))
+            children();
+        }
     }
 }
 
