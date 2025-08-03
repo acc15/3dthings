@@ -13,14 +13,17 @@ spool_hole = 21;
 solder_dia = 0.8;
 
 rod_dia = 8;
-rod_length = spool_length + tolerance*2;
+rod_spool_dia = spool_hole - tolerance*2;
+rod_lock_length = xy_thickness;
+rod_cut_length = xy_thickness + tolerance*2;
+rod_free_length = spool_length + tolerance*2;
+rod_length = rod_lock_length * 2 + rod_cut_length * 2 + rod_free_length;
 
-spool_rod_dia = spool_hole - tolerance*2;
-rod_distance = spool_dia/2+rod_dia/2+tolerance*4;
+rod_distance = spool_dia/2 + rod_dia; // precise value = spool_dia/2 + rod_dia/2 + tolerance*2;
 rod_hole = solder_dia + tolerance*2;
 
 rods = [
-    [0, 0, spool_rod_dia, false],
+    [0, 0, rod_spool_dia, false],
     [rod_distance, 45, rod_dia, true],
     [rod_distance, 225, rod_dia, false],
     [rod_distance, 315, rod_dia, false]
@@ -40,33 +43,24 @@ module rod_cut_shape(d) {
 }
 
 module rod(d, hole = false) {
-    lock = z_thickness;
-    cut = z_thickness + tolerance*2;
-    
-    translate([0,0,lock+cut+rod_length+cut])
-    linear_extrude(lock)
-    rod_shape(d);
-    
-    translate([0,0,lock+cut+rod_length])
-    linear_extrude(cut)
-    rod_cut_shape(d);
-    
-    translate([0,0,lock+cut])
-    difference() {
-        linear_extrude(rod_length)
-        rod_shape(d,1);
-        if (hole) {
-            translate([-rod_hole/2,-d/2-tolerance,xy_thickness])
-            cube([rod_hole, d+tolerance*2, rod_length - xy_thickness*2]);
+    bl_tower([rod_lock_length,rod_cut_length,rod_free_length,rod_cut_length,rod_lock_length]) {
+        if ($index == 0 || $index == 4) {
+            linear_extrude($length)
+            rod_shape(d);
+        } else if ($index == 1 || $index == 3) {
+            linear_extrude($length)
+            rod_cut_shape(d);
+        } else {
+            difference() {
+                linear_extrude($length)
+                rod_shape(d,1);
+                if (hole) {
+                    translate([-rod_hole/2,-d/2-tolerance,xy_thickness])
+                    cube([rod_hole, d+tolerance*2, $length - xy_thickness*2]);
+                }
+            }
         }
     }
-
-    translate([0,0,lock])
-    linear_extrude(cut)
-    rod_cut_shape(d);
-    
-    linear_extrude(lock)
-    rod_shape(d);    
 }
 
 module rod_mount_diff(d) {
@@ -96,7 +90,6 @@ module rod_mount(d) {
         rod_mount_diff(d);
     }
 }
-
 
 module holder_shape() {
     for (rod = rods) {
@@ -144,7 +137,7 @@ module spool() {
 
 
 module assembly() {    
-    translate([0,0,z_thickness*2 + spool_length+tolerance*2])
+    translate([0,0,z_thickness*2+tolerance*2+rod_free_length])
     holder_base();
 
     translate([0,0,z_thickness*2])
@@ -158,19 +151,54 @@ module assembly() {
         rod(rod[2], rod[3]);
     }
 
-    #translate([0,0,z_thickness*2 + tolerance])
+    #translate([0,0,z_thickness*2 + tolerance + (rod_free_length - spool_length)/2])
     spool();
 }
 
-assembly();
+module printset(with_rods=true,with_base=true) {
+    
+    rod_offset_lengths = with_rods ? [ for (rod = rods) rod[2]+xy_thickness ] : [];
+    
+    module rods() {
+        module print_rod(rod) {
+            translate([rod[2]/2, rod_length, rod[2]*0.25])
+            rotate([90,0,0])
+            rod(rod[2], rod[3]);
+        }
+        bl_tower(rod_offset_lengths, [1,0,0]) {
+            print_rod(rods[$index]);
+        }
+    }
+    
+    if (with_rods) {
+        rods();
+    }
+    
+    module bases() {
+    
+        x_rods = [for (rod = rods) bl_polar(rod[0],rod[1])[0]];
+        y_rods = [for (rod = rods) bl_polar(rod[0],rod[1])[1]];
+        
+        holder_base_dim = [ max(x_rods) - min(x_rods)+rod_dia+xy_thickness*2, max(y_rods) - min(y_rods) + rod_dia + xy_thickness*2, z_thickness*2 ];
+        
+        translate([holder_base_dim[0]/2,holder_base_dim[1]/2 + rod_length + xy_thickness,0]) 
+            holder_base();
 
-*rotate([90,0,0])
-rod(rods[3][2], rods[3][3]);
+        translate([bl_sum(rod_offset_lengths) + holder_base_dim[0]/2,holder_base_dim[1]/2,0])
+        rotate([0,180,0])
+        mirror([0,0,1])
+        holder_base();
+        
+    }
+    
+    if (with_base) {
+        bases();
+    }
 
-*holder_base();
+}
 
-*rotate([0,180,0])
-mirror([0,0,1])
-holder_base();
+*assembly();
+
+printset();
 
 

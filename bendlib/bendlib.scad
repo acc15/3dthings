@@ -42,7 +42,7 @@ function bl_mul(a, b) = is_list(a)
 function bl_fac(n) = n <= 1 ? 1 : n * bl_fac(n - 1);
 
 /** Computes sum of all elements in array */
-function bl_sum(a, i = 0) = i >= len(a) ? 0 : a[i] + bl_sum(a, i + 1);
+function bl_sum(a, start = 0, end = -1) = let(a_end = end < 0 ? len(a) : min(len(a),end)) start >= a_end ? 0 : a[start] + bl_sum(a, start + 1, a_end);
 
 /** Checks whether each element of v is zero or not (zero vector with zero norm) */
 function bl_zero(v, i = 0) = i >= len(v) ? true: v[i] == 0 && bl_zero(v, i + 1);
@@ -442,6 +442,16 @@ module bl_box(xyz_dim, xyz_thickness, center = false) {
 module bl_offset_clone(offsets) {
     for (off = offsets) {
         translate(off)
+        children();
+    }
+}
+
+module bl_tower(lengths, translate_vector = [0,0,1]) {
+    for (i = [0:len(lengths)-1]) {
+        $index = i;
+        $length = lengths[i];
+        $offset = bl_sum(lengths, 0, i);
+        translate(translate_vector * $offset)
         children();
     }
 }
