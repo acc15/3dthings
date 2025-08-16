@@ -17,7 +17,7 @@ function bl_nd(v, nd) = let(
     : [ for (i = [0 : count-1]) i < len(v) ? v[i] : default[i] ]
 : v != undef ? [ for (i = [0 : count-1]) v ] : undef;
 
-function bl_repeat(v, n) = [ for (i = [0:n-1]) v ];
+function bl_repeat(n, v) = [ for (i = [0:n-1]) v ];
 
 function bl_2d(v) = bl_nd(v,2);
 function bl_3d(v) = bl_nd(v,3);

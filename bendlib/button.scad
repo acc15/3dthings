@@ -76,7 +76,54 @@ module button(type = button()) {
 $fa = 0.2;
 $fs = 0.2;
 
+function push_button(dim = undef, dia = undef, height = undef) = [
+    bl_def(dim, [6,6,4,0.2]), 
+    bl_def(dia, [3.5,3,1.2]), 
+    bl_def(height, 2)
+];
+
+function push_button_dim(type) = type[0];
+function push_button_dia(type) = type[1];
+function push_button_height(type) = type[2];
+
+module push_button(type = push_button()) {
+    
+    dim = push_button_dim(type);
+    dia = push_button_dia(type);
+    height = push_button_height(type);
+    
+    mount_offsets = bl_repeat(4, [1,1]);
+    
+    color("gray")
+    translate([0,0,dim[2]-dim[3]])
+    linear_extrude(dim[3])
+    difference() {
+        square([dim[0],dim[1]]);
+        bl_quad_mirror(dim, mount_offsets) {
+            circle(d = dia[2]);
+        }
+        translate(bl_2d(dim)/2)
+        circle(d = dia[0]);
+    }
+    
+    color("black") {
+        cube([dim[0],dim[1],dim[2]-dim[3]]);
+    
+        translate([0,0,dim[2]-dim[3]])
+        bl_quad_mirror(dim, mount_offsets) {
+            cylinder(d = dia[2], h = dim[3]*2);
+        }
+    
+        color("black")
+        translate([dim[0]/2,dim[1]/2,dim[2]])
+        cylinder(d1 = dia[0], d2 = dia[1], h = height);
+    }
+}
+
+push_button(push_button(height = 9.5));
+
+
+/*
 button = button();
 button(button);
-
-#button_mount_diff(button, 1.5, 0.2);
+*#button_mount_diff(button, 1.5, 0.2);*/
