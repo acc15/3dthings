@@ -17,11 +17,11 @@ function bl_nd(v, nd) = let(
     : [ for (i = [0 : count-1]) i < len(v) ? v[i] : default[i] ]
 : v != undef ? [ for (i = [0 : count-1]) v ] : undef;
 
-function bl_repeat(n, v) = [ for (i = [0:n-1]) v ];
-
 function bl_2d(v) = bl_nd(v,2);
 function bl_3d(v) = bl_nd(v,3);
 
+
+function bl_repeat(n, v) = [ for (i = [0:n-1]) v ];
 
 /** Returns property value from list of pairs where left is a string key and right is value */
 function bl_get(props, key, optional = false) = let(v = search([key], props)) is_num(v[0]) ? props[v[0]][1] : assert(optional, concat("No property found by key ", key)) undef;
@@ -432,10 +432,12 @@ module bl_grid(counts, dim) {
 }
 
 module bl_box(xyz_dim, xyz_thickness, center = false) {
-    translate(center ? [0,0,0] : xyz_dim/2)
+    t_norm = [for (t = xyz_thickness) let(tl = bl_nd(t,2)) [for (tv = tl) tv <= 0 ? -1 : tv]];
+    translate(center ? -xyz_dim/2 : [0,0,0] )
     difference() {
-        cube(xyz_dim, center = true);
-        cube(xyz_dim - [ for (t = xyz_thickness) t + (t <= 0 ? -1 : 0) ]*2, center = true);
+        cube(xyz_dim);
+        translate([ for (t = t_norm) t[0] ])
+        cube(xyz_dim - [ for (t = t_norm) bl_sum(t) ]);
     }
 }
 
@@ -446,12 +448,14 @@ module bl_offset_clone(offsets) {
     }
 }
 
-module bl_tower(lengths, translate_vector = [0,0,1]) {
-    for (i = [0:len(lengths)-1]) {
+module bl_tower(heights, translate_vector = [0,0,1]) {
+    for (i = [0:len(heights)-1]) {
         $index = i;
-        $length = lengths[i];
-        $offset = bl_sum(lengths, 0, i);
+        $height = heights[i];
+        $offset = bl_sum(heights, 0, i);
         translate(translate_vector * $offset)
         children();
     }
 }
+
+bl_box([10,10,10], [[1,2],[2,1],[1,0]], center=true);
