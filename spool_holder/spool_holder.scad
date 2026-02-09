@@ -217,7 +217,7 @@ module all(spool_dia, spool_width) {
 
 }
 
-wheel_spacer();
+//wheel_spacer();
 //wheel();
 
 //all(188, 80);

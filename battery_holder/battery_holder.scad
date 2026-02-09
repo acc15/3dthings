@@ -60,16 +60,16 @@ wire_winding_height = 4;
 wall_thickness = extrusion_width*4;
 
 // amount of snakes in springs
-spring_snakes = 2;
+spring_snakes = 4;
 
 // total spring length
-spring_length = 4;
+spring_length = 8;
 
 // spring thickness
 spring_thickness = extrusion_width * 2;
 
 // distance between springs and walls
-spring_base_space = 2;
+spring_base_space = 1;
 
 // width of single spring
 spring_width = battery_dia / 2 - spring_base_space*2;
@@ -78,7 +78,7 @@ spring_width = battery_dia / 2 - spring_base_space*2;
 spring_pole_space = 2;
 
 // offset to fine tune spring and battery
-pressure_offset = 1;
+pressure_offset = 3;
 
 // base holder length
 holder_length = battery_length + battery_plus_length + spring_length + spring_pole_space + wall_thickness * 3 - pressure_offset;

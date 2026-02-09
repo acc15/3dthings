@@ -155,7 +155,7 @@ function bl_ellipse_perimeter(radius) = let(ra = bl_radius_cast(radius))
 /** 
     
     Computes number of points to draw arc. 
-    Uses original OpenSCAD formula, but expands it to support ellipse arcs:
+    Uses original OpenSCAD formula, but extends it to support ellipse arcs:
     
         int get_fragments_from_r(double r, double fn, double fs, double fa)
         {
@@ -214,7 +214,10 @@ function bl_square_points(dim, radius = 0, center = false) = let(
     bl_arc(radius = rv[3], angle = [270, 360], position = [right - rv[3], bottom + rv[3]])
 );
     
-/** Creates 2d rectangle shape with specified rounded corner radiuses (radius parameter can be list with 1, 2, 4 length)*/
+/** 
+    Creates 2d rectangle shape with specified rounded corner radiuses (radius parameter can be list with 1, 2, 4 length)
+    This also allows to create chamfered corners just set $fn = 1
+*/
 module bl_square(dim, radius = 0, center = false) {
     polygon(bl_square_points(dim, radius, center));
 }
@@ -457,5 +460,3 @@ module bl_tower(heights, translate_vector = [0,0,1]) {
         children();
     }
 }
-
-bl_box([10,10,10], [[1,2],[2,1],[1,0]], center=true);

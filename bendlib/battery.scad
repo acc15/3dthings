@@ -225,13 +225,16 @@ module battery_box(type = battery_box(), with_battery = false, with_contacts = f
     }
 }
 
+
+
+
 $fa = 0.2;
 $fs = 0.2;
 
 *battery();
 *battery_contact();
 //battery_contact_diff(contact=battery_contact_minus()));
-battery_box(with_battery = true, with_contacts = true);
+battery_box();
 
 *battery_contact_diff();
 

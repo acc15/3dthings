@@ -403,7 +403,7 @@ module ptfe_holder(part) {
 }
 
 
-ptfe_holder();
+//ptfe_holder();
 
 module filament_filter() {
     
@@ -480,20 +480,21 @@ module ptfe_tolerance_test() {
 //filament_filter();
    
 
-/*
+
+rotate([90,0,0])
 mount4(true);
-mount4(false);
+//mount4(false);
 
-
+/*
 #translate([-mount_dia,mount_dia/2,-bolt_dia-mount_dia/2])
 rotate([0,90,0])
-cylinder(d = rod_dia, h = bolt_distance + mount_dia * 2);    
+cylinder(d = rod_dia, h = bolt_distance + mount_dia * 2);   */ 
 
-holder_mount2(false);
-holder_mount2(true);
-guide_holder(true);
+//holder_mount2(false, false);
+//holder_mount2(true, false);
+//guide_holder(true);
 
-if ($preview) {
+*if ($preview) {
     rod();
     mount_rod(false);
     mount_rod(true);
@@ -502,7 +503,7 @@ if ($preview) {
     translate([x_distance + spool_length / 2 - spool_h/2, y_distance, z_distance])
     rotate([0,90,0])
     spool(h = spool_h);
-}*/
+}
 
 
 //holder_mount2(false, false);

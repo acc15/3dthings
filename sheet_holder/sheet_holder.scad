@@ -1,16 +1,18 @@
 
-$fs=0.2;
+$fs=0.1;
+$fa = 0.2;
 
-d = 1.6;
-t = 0.25;
-h = 5;
+d = 16;
+h = 50;
+t = 2;
 
-dt = 1;
+
+dt = 10;
 
 module diff_shape() {
     translate([0,-d/2+t/2])
     linear_extrude(h/2,scale=0.2)
-    square([dt,1.5], center=true);
+    square([dt,d], center=true);
 }
 
 difference() {
