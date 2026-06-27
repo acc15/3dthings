@@ -137,7 +137,7 @@ function bl_rotate_v(v) = let(
 function bl_id(dim = 3) = [ for (i = [0:dim]) [ for (j = [0:dim]) i == j ? 1 : 0 ] ];
 
 /** 
-    Normalizes radius[]/diameter[] values to [x_radius, y_radius] array
+    Normalizes radius[] values to [x_radius, y_radius] array
  */
 function bl_radius_cast(radius) = is_list(radius) ? len(radius) >= 2 ? radius : [radius[0], radius[0]] : [radius, radius];
 
@@ -155,7 +155,7 @@ function bl_ellipse_perimeter(radius) = let(ra = bl_radius_cast(radius))
 /** 
     
     Computes number of points to draw arc. 
-    Uses original OpenSCAD formula, but extends it to support ellipse arcs:
+    Uses original OpenSCAD formula, but extends it to support ellipsis arcs:
     
         int get_fragments_from_r(double r, double fn, double fs, double fa)
         {
@@ -167,17 +167,30 @@ function bl_ellipse_perimeter(radius) = let(ra = bl_radius_cast(radius))
  */
 function bl_arc_steps(radius, angle) = let(aa = bl_angle_cast(angle)) $fn > 0 ? $fn : ceil(max(min(abs(aa[1] - aa[0]) / $fa, bl_ellipse_perimeter(radius) / $fs), 5));
 
-/** Computes single arc point at given angle `a` */
+/** Computes single arc point at given angle */
 function bl_polar(radius, angle) = let(ra = bl_radius_cast(radius)) bl_mul([cos(angle), sin(angle)], ra);
 
-/** Computes arc points using fixed amount of steps */
-function bl_arc_loop(radius, angle, steps, position = [0,0], slice = [0,0]) =
-    let(ra = bl_radius_cast(radius), aa = bl_angle_cast(angle)) ra[0] == 0 || ra[1] == 0 
-        ? [ position ]
-        : [ for(i = [slice[0] : steps + slice[1]]) bl_polar(ra, aa[0] + i * (aa[1] - aa[0]) / steps) + position ];
-
-/** Computes arc */
-function bl_arc(radius, angle, position = [0,0], slice = [0,0]) = bl_arc_loop(radius, angle, bl_arc_steps(radius, angle), position, slice);
+/** 
+    Computes arc 
+        
+    radius - either single number or array of 2 numbers (radius x, radius y - useful for ellipsis shapes)
+    angle - either single angle arc is computed as [0, angle], or array of start and end angles
+    position - fixed offset of arc applied to each arc point
+    slice - allow to slice (drop) some points of arc.
+        for example to remove last arc point set slice = [0,-1] or first one [1,0]
+        useful for joining multiple arcs to avoid duplicate start / end points
+        
+    It takes usual $fa, $fs, $fn variables into account and uses them to compute total arc point count.
+    If you need to set fixed amount of points use $fn = x
+        
+*/
+function bl_arc(radius, angle, position = [0,0], slice = [0,0]) = let(
+    steps = bl_arc_steps(radius, angle) - 1,
+    ra = bl_radius_cast(radius), 
+    aa = bl_angle_cast(angle)
+) ra[0] == 0 || ra[1] == 0 
+    ? [ position ] 
+    : [ for(i = [slice[0] : steps + slice[1]]) bl_polar(ra, aa[0] + i * (aa[1] - aa[0]) / steps) + position ];
 
 /** Generates NGON shape */
 function bl_ngon_points(radius, sides = 3, position = [0,0]) = bl_arc_loop(radius, 360, sides, position);
@@ -202,16 +215,16 @@ function bl_square_points(dim, radius = 0, center = false) = let(
     bottom = center ? -dim[1]/2 : 0,
     right = center ? dim[0]/2 : dim[0],
     top = center ? dim[1]/ 2 : dim[1],
-    rv = is_list(radius)
+    rv = [ for(r = (is_list(radius)
         ? len(radius) >= 4 ? radius : len(radius) >= 2 
             ? [radius[0], radius[0], radius[1], radius[1]] 
             : [radius[0], radius[0], radius[0], radius[0]]
-        : [radius, radius, radius, radius]
+        : [radius, radius, radius, radius])) bl_radius_cast(r) ]
 ) concat(
-    bl_arc(radius = rv[0], angle = [0, 90], position = [right - rv[0], top - rv[0]]),
-    bl_arc(radius = rv[1], angle = [90, 180], position = [left + rv[1], top - rv[1]]),
-    bl_arc(radius = rv[2], angle = [180, 270], position = [left + rv[2], bottom + rv[2]]),
-    bl_arc(radius = rv[3], angle = [270, 360], position = [right - rv[3], bottom + rv[3]])
+    bl_arc(radius = rv[0], angle = [0, 90], position = [right - rv[0].x, top - rv[0].y]),
+    bl_arc(radius = rv[1], angle = [90, 180], position = [left + rv[1].x, top - rv[1].y]),
+    bl_arc(radius = rv[2], angle = [180, 270], position = [left + rv[2].x, bottom + rv[2].y]),
+    bl_arc(radius = rv[3], angle = [270, 360], position = [right - rv[3].x, bottom + rv[3].y])
 );
     
 /** 
@@ -361,9 +374,27 @@ function bl_offset_poly(poly, off) = let(n = len(poly)) [ for (i = [0:n-1]) let(
     pt = pi == undef ? l1[1] : pi
 ) pt ];
 
-module bl_quad_mirror(dim, offsets, center=false, move=true) {
+/*
+    
+    Creates mirrors of children() item
+    
+    dim - dimension of box
+    count_or_offsets - either count of mirrors [1 .. 4 (2d) .. 8 (3d) ], or direct array of offsets for each mirror copy
+        each elemet in this array can be undef - in this case mirror copy will be ignored, so you can skip some mirror copies
+    center - whether mirrors should be centered against main axes (x,y,z)
+    move - whether mirrors should be moved by theirs offsets or this is handled in children() call
+
+    Examples of usages:
+
+    bl_quad_mirror([20,20], 4) {
+        translate([4,4])
+        circle(d = 3);
+    }
+
+*/
+module bl_quad_mirror(dim, count_or_offsets, center=false, move=true) {
     d = bl_3d(dim);
-    o = is_list(offsets) ? bl_3d(offsets) : [ for (i=[0:offsets-1]) bl_3d(0) ];
+    o = is_list(count_or_offsets) ? bl_3d(count_or_offsets) : [ for (i=[0:count_or_offsets-1]) bl_3d(0) ];
     
     for ($index = [0:len(o)-1]) {
         $offset = o[$index];
@@ -451,12 +482,24 @@ module bl_offset_clone(offsets) {
     }
 }
 
-module bl_tower(heights, translate_vector = [0,0,1]) {
-    for (i = [0:len(heights)-1]) {
+module bl_tower(heights, axis = [0,0,1]) {
+    for (i = [0 : len(heights)]) {
         $index = i;
         $height = heights[i];
         $offset = bl_sum(heights, 0, i);
-        translate(translate_vector * $offset)
+        translate(axis * $offset)
         children();
+    }
+}
+
+module bl_extrude_tower(heights, axis = [0,0,1]) {
+    for (i = [0 : $children - 1]) {
+        $index = i;
+        $height = heights[i];
+        $offset = bl_sum(heights, 0, i);
+        translate(axis * $offset) {
+            linear_extrude($height)
+            children(i);
+        }
     }
 }

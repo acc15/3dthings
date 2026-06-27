@@ -1,5 +1,4 @@
-use <../bendlib/bendlib.scad>;
-use <../bendlib/path_extrude.scad>;
+use <bendlib/bendlib.scad>;
 
 usb_dim = [12, 4.5, 27];
 usb_back_length = 12;
@@ -195,9 +194,7 @@ module y_splitter() {
         translate([i*(d_inner + thickness[0]),0,0])
         cylinder(d = d_inner, h = 10);
     }
-    
-    
-        
+  
    
 }
 
@@ -211,8 +208,8 @@ y_splitter();
 
 
 
-*usb_connector();
+usb_connector();
 
-*bolt_diff();
-*usb_diff();
+bolt_diff();
+usb_diff();
 
