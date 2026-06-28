@@ -23,6 +23,23 @@ saw_bolt_d = 6;
 saw_bolt_h = 2;
 
 
+adapter_thickness = 0.4*5;
+adapter_saw_space = 5;
+adapter_mount_d = handle_thread_d_max;
+adapter_saw_d = saw_d + adapter_saw_space*2;
+adapter_expansion_h = handle_mount_nut_h + saw_handle_length - adapter_saw_space;
+adapter_saw_h = adapter_saw_space*2 + saw_t;
+
+adapter_saw_depth = 5;
+adapter_saw_mark = 1;
+adapter_angle = 10;
+
+adapter_heel_l = ((adapter_thickness + adapter_saw_space + saw_d - adapter_saw_depth) - (adapter_saw_h/2 + adapter_thickness)*tan(adapter_angle)) * sin(adapter_angle);
+
+adapter_heel_h = adapter_heel_l * cos(adapter_angle); // 20
+
+
+
 module handle_mount() {
     ScrewThread(handle_thread_d_max, handle_thread_height, pitch = handle_thread_pitch);    
     
@@ -66,41 +83,31 @@ module handle_cut_demo() {
 
 *handle_cut_demo();
 
-thickness = 0.4*5;
-saw_space = 5;
-
-adapter_mount_d = handle_thread_d_max;
-adapter_saw_d = saw_d + saw_space*2;
-adapter_expansion_h = handle_mount_nut_h+saw_handle_length+saw_t/2 - saw_space;
-adapter_saw_h = saw_space*2 + saw_t;
-adapter_heel_h = 20;
-adapter_saw_depth = 5;
-adapter_saw_mark = 1;
-adapter_angle = 10;
 
 module adapter_base_shape() {
     polygon(concat([
         [0,0], 
-        [adapter_mount_d/2,0],
-        [adapter_saw_d/2,adapter_expansion_h],
-        [adapter_saw_d/2,adapter_expansion_h+adapter_saw_h],
-        [0,adapter_expansion_h+adapter_saw_h]
+        [adapter_mount_d/2,0], 
+        [adapter_mount_d/2,handle_thread_height],
+        [adapter_saw_d/2,handle_thread_height+adapter_expansion_h],
+        [adapter_saw_d/2,handle_thread_height+adapter_expansion_h+adapter_saw_h],
+        [0,handle_thread_height+adapter_expansion_h+adapter_saw_h]
     ]));
 }
 
 module adapter_base_outer_shape() {
     intersection() {
-        offset(delta=thickness)
+        offset(delta=adapter_thickness)
         adapter_base_shape();
-        square([adapter_saw_d/2+thickness,adapter_expansion_h+adapter_saw_h+thickness]);
+        square([adapter_saw_d/2+adapter_thickness,handle_thread_height+adapter_expansion_h+adapter_saw_h+adapter_thickness]);
     }
     
-    translate([adapter_saw_d/2+thickness,adapter_expansion_h+adapter_saw_h/2])
+    translate([adapter_saw_d/2+adapter_thickness,handle_thread_height+adapter_expansion_h+adapter_saw_h/2])
     rotate(45)
     square([adapter_saw_mark*sqrt(2),adapter_saw_mark*sqrt(2)], center=true);
     
-    translate([0,adapter_expansion_h+adapter_saw_h])
-    square([adapter_saw_d/2+thickness, adapter_heel_h]);
+    translate([0,handle_thread_height+adapter_expansion_h+adapter_saw_h+adapter_thickness-1])
+    square([adapter_saw_d/2+adapter_thickness, adapter_heel_h+1]);
 }
 
 module adapter_base_extrude_outer_shape() {
@@ -117,19 +124,19 @@ module adapter_outer_shell() {
     adapter_base_outer_shape();
 
     rotate([90,0,0])
-    linear_extrude(adapter_saw_d/2+thickness)
+    linear_extrude(adapter_saw_d/2+adapter_thickness)
     adapter_base_extrude_outer_shape();
 
 }
 
 
-module adapter_form_cube(for_diff = false) {
-    w = adapter_saw_d+thickness*2+adapter_saw_mark*2;
+module adapter_intersection_cube(for_diff = false) {
+    w = adapter_saw_d+adapter_thickness*2+adapter_saw_mark*2;
     h = adapter_expansion_h+adapter_saw_h+adapter_heel_h;
     
-    translate([0,-adapter_saw_d/2-thickness+15,adapter_expansion_h+adapter_saw_h+8])
+    translate([0,-adapter_saw_d/2-adapter_thickness+15,adapter_expansion_h+adapter_saw_h+8])
     rotate([-adapter_angle,0,0])
-    translate([-w/2,(for_diff?thickness:0),-h])
+    translate([-w/2,(for_diff?adapter_thickness:0),-h])
     cube([
         w,
         w,
@@ -141,38 +148,38 @@ module adapter_cut_shell() {
 
     intersection() {
         rotate_extrude()
-        adapter_base_shape();
-        adapter_form_cube(true);
+        difference() {
+            adapter_base_shape();
+            square([adapter_mount_d, handle_thread_height]);
+        }
+        adapter_intersection_cube(true);
     }
 
     rotate([90,0,0])
-    linear_extrude(adapter_saw_d/2+thickness+1) {
-        translate([-adapter_saw_d/2,adapter_expansion_h])
+    linear_extrude(adapter_saw_d/2+adapter_thickness+1) {
+        translate([-adapter_saw_d/2,handle_thread_height+adapter_expansion_h])
         square([adapter_saw_d, adapter_saw_h]);
     }
     
-    translate([0,0,adapter_expansion_h+adapter_saw_h-1])
-    cylinder(d = saw_bolt_d, h = thickness+adapter_heel_h);
+    translate([0,0,handle_thread_height+adapter_expansion_h+adapter_saw_h-1])
+    cylinder(d = saw_bolt_d, h = adapter_thickness+adapter_heel_h);
     
 }
 
     
 module adapter() {
-
-    translate([0,0,handle_thread_height])
-    intersection() {
-        difference() {
-            adapter_outer_shell();
-            adapter_cut_shell();
-        }
-        #adapter_form_cube();
-    }
-    
     ScrewHole(handle_thread_d_max, handle_thread_height, pitch = handle_thread_pitch) {
-        cylinder(d = handle_thread_d_max+thickness*2, h = handle_thread_height);
+        intersection() {
+            difference() {
+                adapter_outer_shell();
+                adapter_cut_shell();
+            }
+            *adapter_intersection_cube();
+        }
     }
-
 }
+
+
 
 module adapter_printable() {
     rotate([180+adapter_angle,0,0])
@@ -190,8 +197,14 @@ module adapter_preview() {
     }
 }
 
+//adapter_cut_shell();
+adapter();
+
+/*
+translate([0,0,-handle_length-handle_thread_height])
+handle();
+
+
 *adapter_printable();
-
-
-adapter_preview();
+*adapter_preview();*/
 
