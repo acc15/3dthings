@@ -12,7 +12,7 @@ function bl_nd(v, nd) = let(
     count = is_list(nd) ? len(nd) : nd
 ) is_list(v) ? let(
     default = is_list(nd) ? nd : bl_nd(0, count)
-) is_list(v[0])
+) len([ for (p = v) if (is_list(p)) true ]) > 0
     ? [ for (p = v) bl_nd(p, default) ]
     : [ for (i = [0 : count-1]) i < len(v) ? v[i] : default[i] ]
 : v != undef ? [ for (i = [0 : count-1]) v ] : undef;
@@ -395,7 +395,7 @@ function bl_offset_poly(poly, off) = let(n = len(poly)) [ for (i = [0:n-1]) let(
 module bl_quad_mirror(dim, count_or_offsets, center=false, move=true) {
     d = bl_3d(dim);
     o = is_list(count_or_offsets) ? bl_3d(count_or_offsets) : [ for (i=[0:count_or_offsets-1]) bl_3d(0) ];
-    
+        
     for ($index = [0:len(o)-1]) {
         $offset = o[$index];
         if ($offset != undef) {

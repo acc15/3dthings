@@ -34,11 +34,11 @@ adapter_saw_depth = 5;
 adapter_saw_mark = 1;
 adapter_angle = 10;
 
-adapter_heel_l = ((adapter_thickness + adapter_saw_space + saw_d - adapter_saw_depth) - (adapter_saw_h/2 + adapter_thickness)*tan(adapter_angle)) * sin(adapter_angle);
 
+adapter_saw_distance = adapter_saw_h/2 + adapter_thickness; // h1
+adapter_heel_l = ((adapter_thickness + adapter_saw_space + saw_d - adapter_saw_depth) -adapter_saw_distance * tan(adapter_angle)) * sin(adapter_angle); // y2
 adapter_heel_h = adapter_heel_l * cos(adapter_angle); // 20
-
-
+adapter_intersection_h = adapter_saw_distance / cos(adapter_angle) + adapter_heel_l;
 
 module handle_mount() {
     ScrewThread(handle_thread_d_max, handle_thread_height, pitch = handle_thread_pitch);    
@@ -68,7 +68,6 @@ module handle() {
     translate([0,0,handle_length])
     handle_mount();
 
-    
 }
 
 
@@ -132,11 +131,11 @@ module adapter_outer_shell() {
 
 module adapter_intersection_cube(for_diff = false) {
     w = adapter_saw_d+adapter_thickness*2+adapter_saw_mark*2;
-    h = adapter_expansion_h+adapter_saw_h+adapter_heel_h;
+    h = handle_thread_height+adapter_expansion_h+adapter_saw_h+adapter_heel_h+20;
     
-    translate([0,-adapter_saw_d/2-adapter_thickness+15,adapter_expansion_h+adapter_saw_h+8])
+    translate([0,-saw_d/2+adapter_saw_depth,handle_thread_height+adapter_expansion_h+adapter_saw_h/2])
     rotate([-adapter_angle,0,0])
-    translate([-w/2,(for_diff?adapter_thickness:0),-h])
+    translate([-w/2,(for_diff?adapter_thickness:0),-h+adapter_intersection_h])
     cube([
         w,
         w,
@@ -162,7 +161,7 @@ module adapter_cut_shell() {
     }
     
     translate([0,0,handle_thread_height+adapter_expansion_h+adapter_saw_h-1])
-    cylinder(d = saw_bolt_d, h = adapter_thickness+adapter_heel_h);
+    cylinder(d = saw_bolt_d, h = adapter_thickness+adapter_heel_h+1);
     
 }
 
@@ -174,7 +173,7 @@ module adapter() {
                 adapter_outer_shell();
                 adapter_cut_shell();
             }
-            *adapter_intersection_cube();
+            adapter_intersection_cube();
         }
     }
 }
@@ -197,14 +196,8 @@ module adapter_preview() {
     }
 }
 
-//adapter_cut_shell();
-adapter();
-
-/*
-translate([0,0,-handle_length-handle_thread_height])
-handle();
 
 
-*adapter_printable();
-*adapter_preview();*/
+adapter_printable();
+*adapter_preview();
 
