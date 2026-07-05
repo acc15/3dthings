@@ -13,3 +13,6 @@
 [submodule "lib/threads-scad"]
 	path = lib/threads-scad
 	url = https://github.com/rcolyer/threads-scad.git
+[submodule "lib/bendlib"]
+	path = lib/bendlib
+	url = git@github.com:acc15/bendlib.git
