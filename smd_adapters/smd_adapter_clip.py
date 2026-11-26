@@ -24,6 +24,10 @@ FOOT_HEIGHT = 0.4
 LOCK_HEIGHT = 0.4
 FOOT_WIDTH_MAX = 1.5
 FOOT_LENGTH_ADD = 1.0
+# Flat silicone contact strip: ~1.0 mm thick, 0.6-0.7 mm wide.  It is a
+# press fit into the 0.5 x 0.6 mm pocket, so no glue is needed.
+SEAT_WIDTH = 0.5
+SEAT_DEPTH = 0.6
 ANGLE = 45.0
 
 
@@ -100,6 +104,16 @@ def clip_profile(clip_dim: tuple[float, float]) -> Sketch:
     wall = offset(cavity, THICKNESS, kind=Kind.INTERSECTION) - cavity
     return cast(Sketch, wall & keep_above_slot)
 
+
+def contact_strip(size: AdapterSize) -> tuple[float, float, float]:
+    """X length, Y width and Y centre of the lead-contact strip."""
+    width = min(size.clip[1], size.chip[1] + FOOT_WIDTH_MAX * 2)
+    strip_y = (width - size.chip[1]) / 2
+    strip_x = size.chip[0] + FOOT_LENGTH_ADD * 2
+    center_y = size.chip[1] / 2 + strip_y / 2
+    return strip_x, strip_y, center_y
+
+
 def clip_body(size: AdapterSize) -> Part:
     """Extruded profile with the chip cut-out."""
     clip_length = size.clip[1]
@@ -121,21 +135,41 @@ def clip_foot(size: AdapterSize) -> Part | None:
     ``THICKNESS``-tall column existed solely to make the OpenSCAD union
     robust; here the pads simply meet the bridge's bottom face.
     """
-    width = min(size.clip[1], size.chip[1] + FOOT_WIDTH_MAX * 2)
-    strip_y = (width - size.chip[1]) / 2
+    strip_x, strip_y, center_y = contact_strip(size)
     if strip_y <= 1e-9:
         return None
-
-    strip_x = size.chip[0] + FOOT_LENGTH_ADD * 2
-    strip_center_y = size.chip[1] / 2 + strip_y / 2
 
     # Wrapping the algebra result in Sketch keeps it a Sketch even when the
     # two disjoint strips would otherwise fuse into a bare Compound.
     pads = Sketch(
-        Pos(0, strip_center_y) * Rectangle(strip_x, strip_y)
-        + Pos(0, -strip_center_y) * Rectangle(strip_x, strip_y)
+        Pos(0, center_y) * Rectangle(strip_x, strip_y)
+        + Pos(0, -center_y) * Rectangle(strip_x, strip_y)
     )
     return extrude(Pos(0, 0, BOARD_THICKNESS / 2) * pads, amount=FOOT_HEIGHT)
+
+
+def clip_seat(size: AdapterSize) -> Part:
+    """Clip with shallow seats for a silicone contact strip.
+
+    Instead of the rigid PETG pads, two 0.5 x 0.6 mm pockets are cut into
+    the bridge underside.  A ~1.0 mm thick silicone strip (0.6-0.7 mm wide,
+    cut to ``strip_x``) is pressed into each pocket.  The press fit holds it
+    without glue; it protrudes ~0.4 mm and is compressed ~0.2 mm by the
+    SMD leads.
+    """
+    strip_x, strip_y, center_y = contact_strip(size)
+    seat_width = min(SEAT_WIDTH, strip_y)
+    top_z = BOARD_THICKNESS / 2 + FOOT_HEIGHT
+
+    body = clip_body(size)
+    for sign in (1, -1):
+        body -= Pos(0, sign * center_y, top_z) * Box(
+            strip_x,
+            seat_width,
+            SEAT_DEPTH,
+            align=(Align.CENTER, Align.CENTER, Align.MIN),
+        )
+    return cast(Part, body)
 
 
 def clip(size: AdapterSize, with_foot: bool = True) -> Part:
@@ -154,9 +188,6 @@ from ocp_vscode import show
 preset = PRESETS["sop8"]
 
 
-show()
-
-# export_stl(part, f"{args.export}.stl")
-# export_step(part, f"{args.export}.step")
-# print(f"wrote {args.export}.stl, {args.export}.step")
+# show(clip(preset))       # rigid PETG pads
+show(clip_seat(preset))    # seats for a silicone contact strip
 
