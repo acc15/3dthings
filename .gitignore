@@ -1,2 +1,4 @@
 *.gcode
 *.stl
+*.3mf
+*.step
