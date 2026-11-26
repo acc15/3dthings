@@ -2,3 +2,5 @@
 *.stl
 *.3mf
 *.step
+__pycache__/
+.vscode/
