@@ -1,193 +1,184 @@
-#!/usr/bin/env python3
 """SMD -> DIP adapter clip.
 
 Port of ``smd_adapter_clip.scad`` to build123d (algebra mode).
 
 The clip holds the adapter PCB and surrounds the SMD footprint.  It is built
 from a 2D cross-section (the "omega" profile that wraps around the board)
-extruded along Y, with a rectangular cut-out for the chip and an optional
-"foot" that frames the footprint.
+extruded along Y, with a rectangular cut-out for the chip.  Lead contacts are
+built as separate solids and composed with plain algebra: add ``feet()`` to
+the body or cut ``seats()`` into it.
 """
-
 import math
 from dataclasses import dataclass
-from typing import cast
 
 from build123d import *
+from ocp_vscode import show
 
-DIM_SCALE = 2.54
+# 0.1" pin pitch: the adapter footprints are counted in these units.
+DIP_PITCH = 2.54
 
 BOARD_THICKNESS = 1.5
 
 THICKNESS = 2.0
-FOOT_HEIGHT = 0.4
+# Space between the board top and the cavity ceiling.  The foot pads fill it
+# completely, the silicone strip protrudes into it.
+CONTACT_HEIGHT = 0.4
 LOCK_HEIGHT = 0.4
+# Foot pads are as wide as the free PCB band allows, but no more than this.
 FOOT_WIDTH_MAX = 1.5
-FOOT_LENGTH_ADD = 1.0
 # Flat silicone contact strip: ~1.0 mm thick, 0.6-0.7 mm wide.  It is a
 # press fit into the 0.5 x 0.6 mm pocket, so no glue is needed.
 SEAT_WIDTH = 0.5
 SEAT_DEPTH = 0.6
 ANGLE = 45.0
+# Horizontal run of each cavity wall per unit of height.
+TAPER = math.tan(math.radians(ANGLE))
+
+BOARD_HALF = BOARD_THICKNESS / 2
+# Cavity ceiling, which is also the underside of the bridge.
+TOP_Z = BOARD_HALF + CONTACT_HEIGHT
+BOTTOM_Z = -BOARD_HALF - LOCK_HEIGHT
+# Bridge underside, normal pointing into the cavity: "+" adds a pad downwards,
+# "-" cuts a pocket upwards.
+BRIDGE = Plane(origin=(0, 0, TOP_Z), x_dir=(1, 0, 0), z_dir=(0, 0, -1))
 
 
 @dataclass(frozen=True)
 class AdapterSize:
     """Dimensions of one adapter, all in mm.
 
-    ``clip`` is the board-side footprint (width along X, length along Y),
-    ``chip`` is the SMD body cut-out (width along X, length along Y).
+    Both tuples are ``(length along X, width along Y)``: X runs along the
+    pin rows and Y across them.  ``clip`` is the board-side footprint.
+    ``chip[0]`` is the SMD body length; ``chip[1]`` is the distance between
+    the spots where the contacts press the leads on either side.  It also
+    sizes the chip window across Y, so it must clear the package body.
     """
 
     clip: tuple[float, float]
     chip: tuple[float, float]
 
+    @property
+    def band_y(self) -> float:
+        """Free PCB strip on each side of the chip, across Y."""
+        return (self.clip[1] - self.chip[1]) / 2
 
-# name -> (clip footprint, chip body), mirroring the SCAD ``sizes`` table
+
+# name -> (clip footprint, chip cut-out), mirroring the SCAD ``sizes`` table
 PRESETS: dict[str, AdapterSize] = {
-    "sot23": AdapterSize(clip=(3 * DIM_SCALE, 2 * DIM_SCALE), chip=(3.0, 1.7)),
-    "sop8": AdapterSize(clip=(4 * DIM_SCALE, 3 * DIM_SCALE), chip=(5.0, 5.1)),
-    "sop14": AdapterSize(clip=(7 * DIM_SCALE, 4 * DIM_SCALE), chip=(9.0, 5.1)),
+    "sot23": AdapterSize(clip=(3 * DIP_PITCH, 2 * DIP_PITCH), chip=(3.0, 1.7)),
+    "sop8": AdapterSize(clip=(4 * DIP_PITCH, 3 * DIP_PITCH), chip=(5.0, 5.1)),
+    "sop14": AdapterSize(clip=(7 * DIP_PITCH, 4 * DIP_PITCH), chip=(9.0, 5.1)),
 }
 
-
-def clip_width(clip_dim: tuple[float, float], x: float) -> float:
-    """Cavity width at a profile step.
-
-    ``x`` is the signed vertical span contributing to the taper:
-    ``BOARD_THICKNESS`` at the board mid-plane, ``-2*FOOT_HEIGHT`` at the
-    top of the cavity and ``-2*LOCK_HEIGHT`` at the lock.
-    """
-    return clip_dim[0] + x * math.tan(math.radians(ANGLE))
+# The adapter the clip is generated for.
 
 
-def clip_cavity(clip_dim: tuple[float, float]) -> Sketch:
-    """Profile of the slot the adapter PCB sits in (drawn in the XY plane)."""
-    top_z = BOARD_THICKNESS / 2 + FOOT_HEIGHT
-    bottom_z = -BOARD_THICKNESS / 2 - LOCK_HEIGHT
-
-    top_half = clip_width(clip_dim, -2 * FOOT_HEIGHT) / 2
-    mid_half = clip_width(clip_dim, BOARD_THICKNESS) / 2
-    bottom_half = clip_width(clip_dim, -2 * LOCK_HEIGHT) / 2
-
-    points = [
-        (-bottom_half, bottom_z),
-        (-mid_half, 0.0),
-        (-top_half, top_z),
-        (top_half, top_z),
-        (mid_half, 0.0),
-        (bottom_half, bottom_z),
-    ]
-    return Polygon(*points)
-
-
-def clip_profile(clip_dim: tuple[float, float]) -> Sketch:
+def clip_profile() -> Sketch:
     """Material cross-section: the cavity grown outward by THICKNESS.
 
-    A mitered 2D offset (``Kind.INTERSECTION``) gives exactly the outer
-    contour that used to be computed by hand with ``2 / cos(angle)`` and
-    ``tan(45 - angle / 2)``. The offset also grows below the open slot, so
-    that part is trimmed off flush with the bottom of the lip.
+    The cavity is the slot the adapter PCB sits in: ``PRESET.clip[0]`` is its
+    width at the board faces, and the walls taper at ``ANGLE`` away from the
+    widest mid-plane.  A mitered 2D offset (``Kind.INTERSECTION``) gives
+    exactly the outer contour that used to be computed by hand with
+    ``2 / cos(angle)`` and ``tan(45 - angle / 2)``.  The offset also grows
+    below the open slot, so that part is trimmed off flush with the lip.
     """
-    cavity = clip_cavity(clip_dim)
+    half = PRESET.clip[0] / 2
+    # Right half bottom to top, then its mirror top to bottom: the contour is
+    # counter-clockwise, so the face normal is +Z.
+    side = [
+        (half - LOCK_HEIGHT * TAPER, BOTTOM_Z),
+        (half + BOARD_HALF * TAPER, 0.0),
+        (half - CONTACT_HEIGHT * TAPER, TOP_Z),
+    ]
+    cavity = Polygon(*(side + [(-x, z) for x, z in reversed(side)]))
 
-    bottom_z = -BOARD_THICKNESS / 2 - LOCK_HEIGHT
-    outer_top_z = BOARD_THICKNESS / 2 + FOOT_HEIGHT + THICKNESS
-
-    # Generously wide mask that keeps only the part above the slot opening.
-    keep_above_slot = Pos(0, bottom_z) * Rectangle(
-        2 * (clip_dim[0] + 2 * THICKNESS),
-        outer_top_z - bottom_z,
+    grown = offset(cavity, THICKNESS, kind=Kind.INTERSECTION)
+    bbox = grown.bounding_box()
+    # Trim the part of the offset that grew below the slot opening.
+    keep_above_slot = Pos(0, BOTTOM_Z) * Rectangle(
+        bbox.size.X,
+        bbox.max.Y - BOTTOM_Z,
         align=(Align.CENTER, Align.MIN),
     )
 
-    wall = offset(cavity, THICKNESS, kind=Kind.INTERSECTION) - cavity
-    return cast(Sketch, wall & keep_above_slot)
+    return Sketch((grown & keep_above_slot) - cavity)
 
 
-def contact_strip(size: AdapterSize) -> tuple[float, float, float]:
-    """X length, Y width and Y centre of the lead-contact strip."""
-    width = min(size.clip[1], size.chip[1] + FOOT_WIDTH_MAX * 2)
-    strip_y = (width - size.chip[1]) / 2
-    strip_x = size.chip[0] + FOOT_LENGTH_ADD * 2
-    center_y = size.chip[1] / 2 + strip_y / 2
-    return strip_x, strip_y, center_y
-
-
-def clip_body(size: AdapterSize) -> Part:
-    """Extruded profile with the chip cut-out."""
-    clip_length = size.clip[1]
-    body = extrude(Plane.XZ * clip_profile(size.clip), amount=clip_length / 2, both=True)
-    # Cut the chip window through the whole body; Until.LAST finds the far
-    # face of the target, so no guessed cut depth or center is needed.
-    body -= extrude(
-        Plane.XY.offset(body.bounding_box().min.Z) * Rectangle(size.chip[0], size.chip[1]), 
-        until=Until.LAST, 
-        target=body
+def clip() -> Part:
+    """Clip body around the adapter board, with the chip window cut out."""
+    part = extrude(
+        Plane.XZ * clip_profile(),
+        amount=PRESET.clip[1] / 2,
+        both=True,
     )
-    return cast(Part, body)
 
-
-def clip_foot(size: AdapterSize) -> Part | None:
-    """Two pads pressing the SMD leads against the PCB pads.
-
-    Only the part below the bridge is needed.  The old frame and the extra
-    ``THICKNESS``-tall column existed solely to make the OpenSCAD union
-    robust; here the pads simply meet the bridge's bottom face.
-    """
-    strip_x, strip_y, center_y = contact_strip(size)
-    if strip_y <= 1e-9:
-        return None
-
-    # Wrapping the algebra result in Sketch keeps it a Sketch even when the
-    # two disjoint strips would otherwise fuse into a bare Compound.
-    pads = Sketch(
-        Pos(0, center_y) * Rectangle(strip_x, strip_y)
-        + Pos(0, -center_y) * Rectangle(strip_x, strip_y)
+    # The window cuts only the bridge; below it the cavity is already open.
+    part -= extrude(
+        BRIDGE * Rectangle(PRESET.chip[0], PRESET.chip[1]),
+        amount=-THICKNESS,
     )
-    return extrude(Pos(0, 0, BOARD_THICKNESS / 2) * pads, amount=FOOT_HEIGHT)
+    return Part(part)
 
 
-def clip_seat(size: AdapterSize) -> Part:
-    """Clip with shallow seats for a silicone contact strip.
+def _contacts(width: float, amount: float) -> Part:
+    """Two lead contacts on the bridge underside, mirrored across the chip.
 
-    Instead of the rigid PETG pads, two 0.5 x 0.6 mm pockets are cut into
-    the bridge underside.  A ~1.0 mm thick silicone strip (0.6-0.7 mm wide,
-    cut to ``strip_x``) is pressed into each pocket.  The press fit holds it
-    without glue; it protrudes ~0.4 mm and is compressed ~0.2 mm by the
-    SMD leads.
+    Both start at the chip window edge and extend outward by ``width`` into
+    the exposed PCB strip, so they must fit inside that band.  ``amount``
+    grows along the cavity-facing bridge normal: a positive value adds
+    material downwards, a negative one cuts upwards.
     """
-    strip_x, strip_y, center_y = contact_strip(size)
-    seat_width = min(SEAT_WIDTH, strip_y)
-    top_z = BOARD_THICKNESS / 2 + FOOT_HEIGHT
-
-    body = clip_body(size)
-    for sign in (1, -1):
-        body -= Pos(0, sign * center_y, top_z) * Box(
-            strip_x,
-            seat_width,
-            SEAT_DEPTH,
-            align=(Align.CENTER, Align.CENTER, Align.MIN),
+    band_y = PRESET.band_y
+    if not 0 < width <= band_y:
+        raise ValueError(
+            f"{width:.2f} mm contacts do not fit in a {band_y:.2f} mm band"
         )
-    return cast(Part, body)
+
+    # Full cavity width at the bridge underside (the profile's top edge).
+    strip_x = PRESET.clip[0] - 2 * CONTACT_HEIGHT * TAPER
+    center_y = PRESET.chip[1] / 2 + width / 2
+
+    return extrude(
+        BRIDGE * Sketch(
+            Pos(0, sign * center_y) * Rectangle(strip_x, width)
+            for sign in (1, -1)
+        ),
+        amount=amount,
+    )
 
 
-def clip(size: AdapterSize, with_foot: bool = True) -> Part:
-    part = clip_body(size)
-    if with_foot:
-        part += clip_foot(size)
-    return part
+def feet() -> Part:
+    """Rigid pads on the bridge underside, pressing the leads onto the PCB."""
+    return _contacts(min(FOOT_WIDTH_MAX, PRESET.band_y), CONTACT_HEIGHT)
+
+
+def seats() -> Part:
+    """Pockets in the bridge underside for a silicone contact strip.
+
+    A ~1.0 mm thick silicone strip (0.6-0.7 mm wide, cut to ``strip_x``) is
+    pressed into each pocket: the press fit holds it without glue, it
+    protrudes ~0.4 mm and is compressed ~0.2 mm by the SMD leads.
+    """
+    return _contacts(SEAT_WIDTH, -SEAT_DEPTH)
 
 
 def printable(part: Part) -> Part:
     """Flip the part so the open side faces down for printing."""
-    return Rot(180, 0, 0) * part
-
-from ocp_vscode import show
-
-preset = PRESETS["sop8"]
+    return Rot(180, 0, 0) * Part(part)
 
 
-# show(clip(preset))       # rigid PETG pads
-show(clip_seat(preset))    # seats for a silicone contact strip
+for name, preset in PRESETS.items():
+    NAME = name
+    PRESET = preset
+    export_step(printable(Part(clip() - seats())), f"{NAME}_seats.step")
 
+for name, preset in PRESETS.items():
+    NAME = name
+    PRESET = preset
+    export_step(printable(Part(clip() + feet())), f"{NAME}_feet.step")
+
+# show(part)
+# export_step(part, f"{NAME}_seats.step")    # pockets for a silicone contact strip
+# show(clip() + feet())   # rigid PETG pads
+# show(clip())            # bare clip
