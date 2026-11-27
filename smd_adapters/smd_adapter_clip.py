@@ -9,7 +9,7 @@ built as separate solids and composed with plain algebra: add ``feet()`` to
 the body or cut ``seats()`` into it.
 """
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from build123d import *
 from ocp_vscode import show
@@ -43,34 +43,69 @@ BOTTOM_Z = -BOARD_HALF - LOCK_HEIGHT
 BRIDGE = Plane(origin=(0, 0, TOP_Z), x_dir=(1, 0, 0), z_dir=(0, 0, -1))
 
 
-@dataclass(frozen=True)
-class AdapterSize:
-    """Dimensions of one adapter, all in mm.
+@dataclass(frozen=True, slots=True)
+class Preset:
+    """One adapter footprint; all dimensions in mm.
 
-    Both tuples are ``(length along X, width along Y)``: X runs along the
-    pin rows and Y across them.  ``clip`` is the board-side footprint.
-    ``chip[0]`` is the SMD body length; ``chip[1]`` is the distance between
-    the spots where the contacts press the leads on either side.  It also
-    sizes the chip window across Y, so it must clear the package body.
+    ``clip`` and ``chip`` are ``(length along X, width along Y)``: X runs
+    along the pin rows and Y across them.  ``clip`` is the board-side
+    footprint; ``chip[0]`` is the SMD body length and ``chip[1]`` is the
+    distance between the spots where the contacts press the leads on either
+    side.  ``chip[1]`` also sizes the chip window across Y, so it must clear
+    the package body.
     """
 
+    name: str
     clip: tuple[float, float]
     chip: tuple[float, float]
+    band_y: float = field(init=False)
 
-    @property
-    def band_y(self) -> float:
-        """Free PCB strip on each side of the chip, across Y."""
-        return (self.clip[1] - self.chip[1]) / 2
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "band_y", (self.clip[1] - self.chip[1]) / 2)
 
+    def __str__(self) -> str:
+        return self.name
 
-# name -> (clip footprint, chip cut-out), mirroring the SCAD ``sizes`` table
-PRESETS: dict[str, AdapterSize] = {
-    "sot23": AdapterSize(clip=(3 * DIP_PITCH, 2 * DIP_PITCH), chip=(3.0, 1.7)),
-    "sop8": AdapterSize(clip=(4 * DIP_PITCH, 3 * DIP_PITCH), chip=(5.0, 5.1)),
-    "sop14": AdapterSize(clip=(7 * DIP_PITCH, 4 * DIP_PITCH), chip=(9.0, 5.1)),
-}
+    @classmethod
+    def sot23(cls, *, name: str | None = None) -> "Preset":
+        """SOT-23 adapter: 3 pitches along X, 2 pitches across."""
+        return cls(
+            name=name or "sot23",
+            clip=(3 * DIP_PITCH, 2 * DIP_PITCH),
+            chip=(3.0, 1.7),
+        )
 
-# The adapter the clip is generated for.
+    @classmethod
+    def sop(
+        cls,
+        pins: int,
+        *,
+        pitch: float = 1.27,
+        lead_span: float = 5.1,
+        board_pitches: int | None = None,
+        body_len: float | None = None,
+        name: str | None = None,
+    ) -> "Preset":
+        """Generic SOP adapter with ``pins`` total leads.
+
+        The board length follows the DIP header (one pin per lead).  The
+        other defaults reproduce the standard narrow SOP family and can be
+        overridden for wider bodies, finer pitch or a different board.
+        """
+        per_side = pins // 2
+        if pins % 2 or per_side < 2:
+            raise ValueError(f"invalid SOP pin count: {pins}")
+
+        if board_pitches is None:
+            board_pitches = max(3, math.ceil(per_side / 2))
+        if body_len is None:
+            body_len = float(round(per_side * pitch))
+
+        return cls(
+            name=name or f"sop{pins}",
+            clip=(per_side * DIP_PITCH, board_pitches * DIP_PITCH),
+            chip=(body_len, lead_span),
+        )
 
 
 def clip_profile() -> Sketch:
@@ -129,10 +164,10 @@ def _contacts(width: float, amount: float) -> Part:
     grows along the cavity-facing bridge normal: a positive value adds
     material downwards, a negative one cuts upwards.
     """
-    band_y = PRESET.band_y
-    if not 0 < width <= band_y:
+    if not 0 < width <= PRESET.band_y:
         raise ValueError(
-            f"{width:.2f} mm contacts do not fit in a {band_y:.2f} mm band"
+            f"{width:.2f} mm contacts do not fit in a "
+            f"{PRESET.band_y:.2f} mm band"
         )
 
     # Full cavity width at the bridge underside (the profile's top edge).
@@ -168,17 +203,20 @@ def printable(part: Part) -> Part:
     return Rot(180, 0, 0) * Part(part)
 
 
-for name, preset in PRESETS.items():
-    NAME = name
-    PRESET = preset
-    export_step(printable(Part(clip() - seats())), f"{NAME}_seats.step")
+# The adapter the clip is generated for.
+PRESETS = (Preset.sot23(), Preset.sop(8), Preset.sop(14))
 
-for name, preset in PRESETS.items():
-    NAME = name
+for preset in PRESETS:
     PRESET = preset
-    export_step(printable(Part(clip() + feet())), f"{NAME}_feet.step")
+    export_step(printable(Part(clip() - seats())), f"{preset.name}_seats.step")
 
-# show(part)
-# export_step(part, f"{NAME}_seats.step")    # pockets for a silicone contact strip
+for preset in PRESETS:
+    PRESET = preset
+    export_step(printable(Part(clip() + feet())), f"{preset.name}_feet.step")
+
+# Leave a sane default after the export pass.
+PRESET = Preset.sop(8)
+
+show(clip() - seats())  # pockets for a silicone contact strip
 # show(clip() + feet())   # rigid PETG pads
 # show(clip())            # bare clip
