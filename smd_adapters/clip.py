@@ -149,22 +149,3 @@ def printable(part: Part) -> Part:
     """Flip the part so the open side faces down for printing."""
     return Rot(180, 0, 0) * Part(part)
 
-
-if __name__ == "__main__":
-    presets = (Sot23(), Sop(8), Sop(14))
-    clip = Clip(Sop(8))
-    show(
-        clip.body_seats(),
-        clip.pcb(),
-        names=["clip", "PCB (preview only)"],
-        colors=["#b8b8b8", "#2e8b57"],
-        alphas=[1.0, 0.65],
-    )
-    # show(clip.body_seats())  # silicone contact pockets
-    # show(clip.body())        # bare clip
-
-    # Batch export example:
-    # for preset in presets:
-    #     clip = Clip(preset)
-    #     export_step(printable(clip.body_seats()), f"{clip.cfg.name}_seats.step")
-    #     export_step(printable(clip.body_feet()), f"{clip.cfg.name}_feet.step")
